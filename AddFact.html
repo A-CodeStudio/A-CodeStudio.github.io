@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facts Manager</title>
+    <title>Add Facts</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -24,7 +24,7 @@
             margin: 0 auto;
             padding: 0 20px;
         }
-        .input-container, .search-container, .facts-list {
+        .input-container, .facts-list {
             background-color: #0c04ff;
             color: white;
             padding: 25px;
@@ -38,7 +38,7 @@
             gap: 10px;
             margin-bottom: 15px;
         }
-        input[type="text"], input[type="search"] {
+        input[type="text"] {
             padding: 12px;
             border-radius: 5px;
             border: none;
@@ -85,24 +85,9 @@
             background-color: #0040b3;
             transform: translateY(-2px);
         }
-        .button.secondary {
-            background-color: #555;
-        }
-        .button.danger {
-            background-color: #d32f2f;
-        }
-        .button.danger:hover {
-            background-color: #b71c1c;
-        }
-        .button.star {
-            background-color: transparent;
-            padding: 5px;
-            color: #aaa;
-            font-size: 20px;
-        }
-        .button.star.active {
-            color: gold;
-            text-shadow: 0 0 5px rgba(255, 215, 0, 0.7);
+        .button.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
         .fact-item {
             background-color: rgba(255, 255, 255, 0.1);
@@ -112,25 +97,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.3s;
-        }
-        .fact-item:hover {
-            background-color: rgba(255, 255, 255, 0.2);
         }
         .fact-content {
             flex: 1;
             text-align: left;
             padding: 0 15px;
-        }
-        .fact-number {
-            color: #00c8ff;
-            font-weight: bold;
-            min-width: 30px;
-        }
-        .fact-actions {
-            display: flex;
-            gap: 5px;
-            align-items: center;
         }
         .fact-hashtags {
             display: flex;
@@ -151,107 +122,65 @@
             color: #aaa;
             font-style: italic;
         }
-        .tab-buttons {
-            display: flex;
-            margin-bottom: 20px;
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
         }
-        .tab-button {
-            flex: 1;
-            padding: 12px;
-            background-color: #002c85;
-            border: none;
+        .success {
+            background-color: #4CAF50;
             color: white;
-            cursor: pointer;
-            transition: all 0.3s;
         }
-        .tab-button:first-child {
-            border-radius: 5px 0 0 5px;
-        }
-        .tab-button:last-child {
-            border-radius: 0 5px 5px 0;
-        }
-        .tab-button.active {
-            background-color: #0c04ff;
-            font-weight: bold;
-        }
-        .hidden {
-            display: none;
-        }
-        .starred-fact {
-            border-left: 4px solid gold;
+        .error {
+            background-color: #f44336;
+            color: white;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Facts Manager</h1>
+        <h1>Add Facts</h1>
     </header>
     
     <div class="container">
-        <div class="tab-buttons">
-            <button class="tab-button active" onclick="showTab('addTab')">Add Facts</button>
-            <button class="tab-button" onclick="showTab('searchTab')">Search Facts</button>
-        </div>
-
-        <!-- Вкладка добавления фактов -->
-        <div id="addTab" class="tab-content">
-            <div class="input-container">
-                <div class="input-group">
-                    <input type="text" id="inputValue" placeholder="Enter your fact here...">
-                    <div class="hashtag-input">
-                        <input type="text" id="hashtagInput" placeholder="Add hashtag (e.g. #science)">
-                        <button class="button secondary" onclick="addHashtag()">Add</button>
-                    </div>
-                    <div id="hashtagsPreview" class="hashtags-container"></div>
+        <div class="input-container">
+            <div class="input-group">
+                <input type="text" id="inputValue" placeholder="Enter your fact here...">
+                <div class="hashtag-input">
+                    <input type="text" id="hashtagInput" placeholder="Add hashtag (e.g. #science)">
+                    <button class="button" onclick="addHashtag()">Add</button>
                 </div>
-                <button class="button" onclick="addValue()">Add Fact</button>
+                <div id="hashtagsPreview" class="hashtags-container"></div>
             </div>
-            
-            <div class="facts-list">
-                <h2>Your Facts List</h2>
-                <div id="outputList"></div>
-            </div>
+            <button class="button" id="submitBtn" onclick="addFact()">Submit Fact</button>
+            <div id="statusMessage" class="status-message" style="display: none;"></div>
         </div>
-
-        <!-- Вкладка поиска фактов -->
-        <div id="searchTab" class="tab-content hidden">
-            <div class="search-container">
-                <div class="input-group">
-                    <input type="search" id="searchInput" placeholder="Search facts or hashtags...">
-                    <button class="button" onclick="searchFacts()">Search</button>
-                </div>
-            </div>
-            
-            <div class="facts-list">
-                <h2>Search Results</h2>
-                <div id="searchResults"></div>
-            </div>
+        
+        <div class="facts-list">
+            <h2>Recent Facts</h2>
+            <div id="factsList"></div>
         </div>
     </div>
 
     <script>
-        // Загружаем данные из localStorage
-        let facts = JSON.parse(localStorage.getItem("savedValues")) || [];
-        let starredFacts = JSON.parse(localStorage.getItem("starredFacts")) || [];
-        let currentTab = 'addTab';
+        // Текущие хештеги для нового факта
         let currentHashtags = [];
-
-        // Инициализация при загрузке страницы
+        
+        // URL сервера (замените на ваш реальный URL)
+        const SERVER_URL = 'https://your-server-api.com/facts';
+        
+        // Загрузка фактов при открытии страницы
         window.onload = function() {
-            updateList();
+            loadFacts();
             document.getElementById("inputValue").focus();
             
             // Обработка нажатия Enter
             document.getElementById("inputValue").addEventListener("keypress", function(e) {
-                if (e.key === "Enter") addValue();
+                if (e.key === "Enter") addFact();
             });
             
             document.getElementById("hashtagInput").addEventListener("keypress", function(e) {
                 if (e.key === "Enter") addHashtag();
-            });
-            
-            document.getElementById("searchInput").addEventListener("keypress", function(e) {
-                if (e.key === "Enter") searchFacts();
             });
         };
 
@@ -301,214 +230,109 @@
             updateHashtagsPreview();
         }
 
-        // Показать/скрыть вкладки
-        function showTab(tabId) {
-            document.getElementById(currentTab).classList.add("hidden");
-            document.getElementById(tabId).classList.remove("hidden");
-            
-            document.querySelectorAll(".tab-button").forEach(btn => {
-                btn.classList.remove("active");
-            });
-            event.target.classList.add("active");
-            
-            currentTab = tabId;
-            
-            if (tabId === 'searchTab') {
-                searchFacts();
-                document.getElementById("searchInput").focus();
-            } else {
-                document.getElementById("inputValue").focus();
-            }
-        }
-
-        // Функция добавления нового факта
-        function addValue() {
+        // Добавление факта на сервер
+        async function addFact() {
             const input = document.getElementById("inputValue");
-            const newValue = input.value.trim();
-
-            if (newValue) {
-                const fact = {
-                    text: newValue,
-                    hashtags: [...currentHashtags],
-                    timestamp: new Date().toISOString()
-                };
+            const factText = input.value.trim();
+            const submitBtn = document.getElementById("submitBtn");
+            const statusMessage = document.getElementById("statusMessage");
+            
+            if (!factText) {
+                showStatus("Please enter fact text", "error");
+                return;
+            }
+            
+            const factData = {
+                text: factText,
+                hashtags: currentHashtags,
+                timestamp: new Date().toISOString()
+            };
+            
+            submitBtn.disabled = true;
+            submitBtn.classList.add("loading");
+            submitBtn.textContent = "Submitting...";
+            
+            try {
+                const response = await fetch(SERVER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(factData)
+                });
                 
-                facts.push(fact);
-                localStorage.setItem("savedValues", JSON.stringify(facts));
+                if (!response.ok) {
+                    throw new Error('Server error');
+                }
                 
-                // Сброс полей
+                const result = await response.json();
+                showStatus("Fact successfully added!", "success");
                 input.value = "";
                 currentHashtags = [];
                 updateHashtagsPreview();
-                
-                updateList();
-                input.focus();
+                loadFacts(); // Обновляем список фактов
+            } catch (error) {
+                console.error("Error:", error);
+                showStatus("Error adding fact. Please try again.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("loading");
+                submitBtn.textContent = "Submit Fact";
             }
         }
 
-        // Функция поиска фактов
-        function searchFacts() {
-            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-            const resultsContainer = document.getElementById("searchResults");
+        // Загрузка фактов с сервера
+        async function loadFacts() {
+            const factsList = document.getElementById("factsList");
+            factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
             
-            if (facts.length === 0) {
-                resultsContainer.innerHTML = '<div class="empty-state">No facts available to search</div>';
-                return;
-            }
-
-            const filteredFacts = facts.filter(fact => {
-                // Поиск по тексту факта
-                if (fact.text.toLowerCase().includes(searchTerm)) return true;
-                
-                // Поиск по хештегам
-                if (fact.hashtags && fact.hashtags.some(tag => 
-                    tag.toLowerCase().includes(searchTerm)
-                )) return true;
-                
-                return false;
-            });
-
-            if (filteredFacts.length === 0) {
-                resultsContainer.innerHTML = '<div class="empty-state">No matching facts found</div>';
-                return;
-            }
-
-            resultsContainer.innerHTML = "";
-            filteredFacts.forEach((fact, index) => {
-                const originalIndex = facts.indexOf(fact);
-                const isStarred = starredFacts.includes(originalIndex);
-                const item = document.createElement("div");
-                item.className = `fact-item ${isStarred ? 'starred-fact' : ''}`;
-                
-                // Отображение хештегов
-                let hashtagsHTML = '';
-                if (fact.hashtags && fact.hashtags.length > 0) {
-                    hashtagsHTML = `<div class="fact-hashtags">${
-                        fact.hashtags.map(tag => 
-                            `<span class="fact-hashtag">${tag}</span>`
-                        ).join('')
-                    }</div>`;
+            try {
+                const response = await fetch(SERVER_URL);
+                if (!response.ok) {
+                    throw new Error('Server error');
                 }
                 
-                item.innerHTML = `
-                    <div class="fact-number">${originalIndex + 1}</div>
-                    <button class="button star ${isStarred ? 'active' : ''}" onclick="toggleStar(${originalIndex}, 'search')">★</button>
-                    <div class="fact-content">
-                        ${highlightMatches(fact.text, searchTerm)}
-                        ${hashtagsHTML}
-                    </div>
-                    <div class="fact-actions">
-                        <button class="button secondary" onclick="editFact(${originalIndex})">Edit</button>
-                        <button class="button danger" onclick="deleteFact(${originalIndex}, 'search')">Delete</button>
-                    </div>
-                `;
-                resultsContainer.appendChild(item);
-            });
+                const facts = await response.json();
+                
+                if (facts.length === 0) {
+                    factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
+                    return;
+                }
+                
+                factsList.innerHTML = "";
+                facts.slice(0, 10).forEach(fact => { // Показываем последние 10 фактов
+                    const factElement = document.createElement("div");
+                    factElement.className = "fact-item";
+                    factElement.innerHTML = `
+                        <div class="fact-content">
+                            ${fact.text}
+                            ${fact.hashtags && fact.hashtags.length > 0 ? `
+                                <div class="fact-hashtags">
+                                    ${fact.hashtags.map(tag => `
+                                        <span class="fact-hashtag">${tag}</span>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    factsList.appendChild(factElement);
+                });
+            } catch (error) {
+                console.error("Error:", error);
+                factsList.innerHTML = '<div class="empty-state">Error loading facts</div>';
+            }
         }
 
-        // Подсветка совпадений при поиске
-        function highlightMatches(text, searchTerm) {
-            if (!searchTerm) return text;
+        // Показать статус сообщение
+        function showStatus(message, type) {
+            const statusMessage = document.getElementById("statusMessage");
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = "block";
             
-            const regex = new RegExp(`(${searchTerm})`, "gi");
-            return text.replace(regex, '<span style="background-color: yellow; color: black;">$1</span>');
-        }
-
-        // Функция переключения звезды (избранное)
-        function toggleStar(index, from = 'list') {
-            const starIndex = starredFacts.indexOf(index);
-            if (starIndex === -1) {
-                starredFacts.push(index);
-            } else {
-                starredFacts.splice(starIndex, 1);
-            }
-            localStorage.setItem("starredFacts", JSON.stringify(starredFacts));
-            
-            if (from === 'list') {
-                updateList();
-            } else {
-                searchFacts();
-            }
-        }
-
-        // Функция удаления факта
-        function deleteFact(index, from = 'list') {
-            if (confirm("Are you sure you want to delete this fact?")) {
-                // Удаляем из массива значений
-                facts.splice(index, 1);
-                localStorage.setItem("savedValues", JSON.stringify(facts));
-                
-                // Удаляем из избранного если нужно
-                const starIndex = starredFacts.indexOf(index);
-                if (starIndex !== -1) {
-                    starredFacts.splice(starIndex, 1);
-                    localStorage.setItem("starredFacts", JSON.stringify(starredFacts));
-                }
-                
-                // Обновляем отображение
-                if (from === 'list') {
-                    updateList();
-                } else {
-                    searchFacts();
-                }
-            }
-        }
-
-        // Функция редактирования факта
-        function editFact(index) {
-            const fact = facts[index];
-            const newText = prompt("Edit fact:", fact.text);
-            if (newText !== null) {
-                fact.text = newText.trim();
-                localStorage.setItem("savedValues", JSON.stringify(facts));
-                
-                if (currentTab === 'addTab') {
-                    updateList();
-                } else {
-                    searchFacts();
-                }
-            }
-        }
-
-        // Функция обновления списка
-        function updateList() {
-            const output = document.getElementById("outputList");
-            
-            if (facts.length === 0) {
-                output.innerHTML = '<div class="empty-state">No facts added yet</div>';
-                return;
-            }
-
-            output.innerHTML = "";
-            facts.forEach((fact, index) => {
-                const isStarred = starredFacts.includes(index);
-                
-                // Отображение хештегов
-                let hashtagsHTML = '';
-                if (fact.hashtags && fact.hashtags.length > 0) {
-                    hashtagsHTML = `<div class="fact-hashtags">${
-                        fact.hashtags.map(tag => 
-                            `<span class="fact-hashtag">${tag}</span>`
-                        ).join('')
-                    }</div>`;
-                }
-                
-                const item = document.createElement("div");
-                item.className = `fact-item ${isStarred ? 'starred-fact' : ''}`;
-                item.innerHTML = `
-                    <div class="fact-number">${index + 1}</div>
-                    <button class="button star ${isStarred ? 'active' : ''}" onclick="toggleStar(${index})">★</button>
-                    <div class="fact-content">
-                        ${fact.text}
-                        ${hashtagsHTML}
-                    </div>
-                    <div class="fact-actions">
-                        <button class="button secondary" onclick="editFact(${index})">Edit</button>
-                        <button class="button danger" onclick="deleteFact(${index})">Delete</button>
-                    </div>
-                `;
-                output.appendChild(item);
-            });
+            setTimeout(() => {
+                statusMessage.style.display = "none";
+            }, 3000);
         }
     </script>
 </body>
