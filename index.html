@@ -3,15 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Facts</title>
+    <title>Interesting Facts</title>
     <style>
-        /* Сохраняем все предыдущие стили */
         body {
             background-color: #1a1a1a;
             color: #f5f5f5;
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
+            text-align: center;
+            position: relative;
+            min-height: 100vh;
         }
-        /* Добавляем новые стили для совместимости */
+        header {
+            background-color: #00c8ff;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .stats-corner {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .author-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            text-decoration: none;
+            z-index: 100;
+        }
         .server-indicator {
             position: fixed;
             bottom: 10px;
@@ -20,6 +51,163 @@
             padding: 5px 10px;
             border-radius: 15px;
             font-size: 12px;
+        }
+        .facts-container {
+            background-color: #0c04ff;
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto 60px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .fact-text {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            line-height: 1.5;
+        }
+        .special-fact {
+            border: 3px solid gold;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+        }
+        .special-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background-color: gold;
+            color: #002c85;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .counter {
+            color: #00c8ff;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .no-facts {
+            color: #ff6b6b;
+            font-style: italic;
+        }
+        .button {
+            background-color: #002c85;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #0040b3;
+            transform: translateY(-2px);
+        }
+        .button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .navigation {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .progress-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .new-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #ff4d4d;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .view-status {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        .fact-hashtags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .hashtag {
+            background-color: #00c8ff;
+            color: #002c85;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hashtag:hover {
+            background-color: #002c85;
+            color: #00c8ff;
+        }
+        .hashtag.active {
+            background-color: gold;
+            color: #002c85;
+        }
+        .hashtag.excluded {
+            background-color: #ff4d4d;
+            color: white;
+            text-decoration: line-through;
+        }
+        .filter-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        .reset-filters {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #00c8ff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .hashtag-hint {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .hashtag-hint kbd {
+            background-color: #333;
+            color: #fff;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
         }
     </style>
 </head>
@@ -31,62 +219,348 @@
             CTR: <span id="ctrPercentage">0%</span>
         </div>
     </header>
-
+    
     <div class="facts-container">
-        <!-- Остальная разметка остается без изменений -->
+        <div id="newIndicator" class="new-indicator" style="display: none;">NEW</div>
+        <div id="progressIndicator" class="progress-indicator">0%</div>
+        
+        <div class="counter" id="counter">Fact 0/0</div>
+        
+        <div id="factDisplay">
+            <div class="fact-text" id="factText">No facts available</div>
+        </div>
+        
+        <div class="view-status" id="viewStatus"></div>
+        <div class="filter-status" id="filterStatus"></div>
+        <div class="reset-filters" id="resetFilters" style="display: none;" onclick="resetFilters()">Reset filters</div>
+        
+        <div class="navigation">
+            <button class="button" id="prevBtn" onclick="PF()" disabled>Previous</button>
+            <button class="button" onclick="randomFact()">Random</button>
+            <button class="button" id="nextBtn" onclick="NF()" disabled>Next</button>
+        </div>
     </div>
 
-    <div class="server-indicator" id="serverStatus">Using local storage</div>
+    <a href="author.html" class="author-btn" id="authorLink">Author</a>
+    <div class="server-indicator" id="serverStatus">Loading...</div>
 
     <script>
-        // Обновляем URL для работы с сервером
+        // URL сервера (замените на ваш реальный URL)
         const SERVER_URL = 'https://your-server-api.com/facts';
-        let isUsingServer = false;
+        const LOCAL_STORAGE_KEY = 'sharedFacts';
+        
+        // Состояние приложения
         let facts = [];
+        let starredFacts = JSON.parse(localStorage.getItem("starredFacts")) || [];
+        let viewedFacts = JSON.parse(localStorage.getItem("viewedFacts")) || [];
+        let currentIndex = 0;
+        let firstView = true;
+        let activeFilters = [];
+        let excludedHashtags = [];
+        let isUsingServer = false;
+        
+        // Статистика посещений
+        let visitorStats = JSON.parse(localStorage.getItem("visitorStats")) || {
+            count: 0,
+            clicks: 0,
+            lastVisit: null
+        };
 
-        // Загружаем факты при запуске
+        // Инициализация при загрузке страницы
+        window.onload = async function() {
+            // Обновляем статистику посещений
+            updateVisitorStats();
+            
+            // Загружаем факты
+            await loadFacts();
+            
+            // Инициализируем отображение
+            updateFactDisplay();
+            updateProgress();
+            updateNavButtons();
+            
+            // Назначаем обработчик клика для ссылки Author
+            document.getElementById('authorLink').addEventListener('click', function() {
+                if (!sessionStorage.getItem('clicked')) {
+                    visitorStats.clicks++;
+                    localStorage.setItem("visitorStats", JSON.stringify(visitorStats));
+                    sessionStorage.setItem('clicked', 'true');
+                    updateVisitorStats();
+                }
+            });
+        };
+
+        // Обновление статистики посещений
+        function updateVisitorStats() {
+            if (!sessionStorage.getItem('visited')) {
+                visitorStats.count++;
+                sessionStorage.setItem('visited', 'true');
+                localStorage.setItem("visitorStats", JSON.stringify(visitorStats));
+            }
+            
+            document.getElementById("visitorCount").textContent = visitorStats.count;
+            document.getElementById("ctrPercentage").textContent = 
+                visitorStats.count > 0 ? Math.round((visitorStats.clicks / visitorStats.count) * 100) + '%' : '0%';
+        }
+
+        // Загрузка фактов с сервера или из localStorage
         async function loadFacts() {
+            const statusElement = document.getElementById('serverStatus');
+            
             try {
+                // Пытаемся загрузить с сервера
                 const response = await fetch(SERVER_URL);
                 if (response.ok) {
                     facts = await response.json();
                     isUsingServer = true;
-                    document.getElementById('serverStatus').textContent = 'Connected to server';
+                    statusElement.textContent = 'Connected to server';
                 } else {
-                    throw new Error('Server unavailable');
+                    throw new Error('Server error');
                 }
             } catch (error) {
                 // Если сервер недоступен, используем localStorage
-                facts = JSON.parse(localStorage.getItem("sharedFacts")) || [];
-                document.getElementById('serverStatus').textContent = 'Using local storage';
+                facts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
+                isUsingServer = false;
+                statusElement.textContent = 'Using local storage';
+                console.warn("Using local storage:", error);
             }
-            
-            updateFactDisplay();
         }
 
-        // Обновляем функцию фильтрации для работы с новой структурой данных
+        // Функция отображения текущего факта
+        function updateFactDisplay() {
+            const factDisplay = document.getElementById("factDisplay");
+            const factText = document.getElementById("factText");
+            const counter = document.getElementById("counter");
+            const viewStatus = document.getElementById("viewStatus");
+            const newIndicator = document.getElementById("newIndicator");
+            const filterStatus = document.getElementById("filterStatus");
+            const resetFilters = document.getElementById("resetFilters");
+            
+            if (facts.length === 0) {
+                factText.textContent = "No facts available. Add some facts first!";
+                factText.className = "fact-text no-facts";
+                counter.textContent = "Fact 0/0";
+                viewStatus.textContent = "";
+                newIndicator.style.display = "none";
+                return;
+            }
+
+            // Получаем отфильтрованные факты
+            const filteredFacts = getFilteredFacts();
+            if (filteredFacts.length === 0) {
+                factDisplay.innerHTML = '<div class="fact-text no-facts">No facts match current filters</div>';
+                resetFilters.style.display = "block";
+                filterStatus.textContent = getFilterStatusText();
+                return;
+            }
+            
+            // Корректируем индекс, если он вне диапазона
+            if (currentIndex >= filteredFacts.length) {
+                currentIndex = 0;
+            }
+            
+            const fact = filteredFacts[currentIndex];
+            const originalIndex = facts.indexOf(fact);
+            const isStarred = starredFacts.includes(originalIndex);
+            const isNew = !viewedFacts.includes(originalIndex);
+            
+            // Обновляем статус фильтров
+            resetFilters.style.display = (activeFilters.length > 0 || excludedHashtags.length > 0) ? "block" : "none";
+            filterStatus.textContent = getFilterStatusText();
+            
+            // Создаем HTML для отображения факта
+            let factHTML = '';
+            if (isStarred) {
+                factHTML = `
+                    <div class="special-fact">
+                        <div class="special-label">INTERESTING FACT</div>
+                        <div class="fact-text">${fact.text}</div>
+                `;
+            } else {
+                factHTML = `
+                    <div>
+                        <div class="fact-text">${fact.text}</div>
+                `;
+            }
+            
+            // Добавляем хештеги
+            if (fact.hashtags && fact.hashtags.length > 0) {
+                factHTML += `
+                    <div class="fact-hashtags">
+                        ${fact.hashtags.map(tag => `
+                            <span class="hashtag ${activeFilters.includes(tag) ? 'active' : ''} 
+                                ${excludedHashtags.includes(tag) ? 'excluded' : ''}" 
+                                onclick="toggleHashtagFilter('${tag}')">
+                                ${tag}
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div class="hashtag-hint">
+                        Click: filter by tag | <kbd>Ctrl</kbd>+Click: exclude tag
+                    </div>
+                `;
+            }
+            
+            factHTML += `</div>`;
+            factDisplay.innerHTML = factHTML;
+            counter.textContent = `Fact ${currentIndex + 1}/${filteredFacts.length}`;
+            
+            // Обновляем индикаторы
+            newIndicator.style.display = isNew ? "block" : "none";
+            viewStatus.textContent = isNew ? "You haven't seen this fact before" : "You've viewed this fact before";
+            
+            // Добавляем в просмотренные, если это новый факт
+            if (isNew) {
+                viewedFacts.push(originalIndex);
+                localStorage.setItem("viewedFacts", JSON.stringify(viewedFacts));
+                updateProgress();
+            }
+        }
+
+        // Получаем отфильтрованные факты
         function getFilteredFacts() {
+            if (activeFilters.length === 0 && excludedHashtags.length === 0) {
+                return facts;
+            }
+            
             return facts.filter(fact => {
-                // Проверяем соответствие активным фильтрам
-                const matchesActive = activeFilters.length === 0 || 
-                    (fact.hashtags && activeFilters.some(tag => fact.hashtags.includes(tag)));
+                // Проверка активных фильтров
+                if (activeFilters.length > 0) {
+                    const hasActiveTags = fact.hashtags && 
+                        activeFilters.some(tag => fact.hashtags.includes(tag));
+                    if (!hasActiveTags) return false;
+                }
                 
-                // Проверяем отсутствие исключенных хештегов
-                const notExcluded = excludedHashtags.length === 0 || 
-                    !fact.hashtags || 
-                    !excludedHashtags.some(tag => fact.hashtags.includes(tag));
+                // Проверка исключенных хештегов
+                if (excludedHashtags.length > 0 && fact.hashtags) {
+                    const hasExcludedTags = fact.hashtags.some(tag => 
+                        excludedHashtags.includes(tag));
+                    if (hasExcludedTags) return false;
+                }
                 
-                return matchesActive && notExcluded;
+                return true;
             });
         }
 
-        // Обновляем инициализацию
-        window.onload = function() {
-            loadFacts(); // Заменяем загрузку из localStorage
-            // Остальная инициализация остается без изменений
-        };
+        // Текст статуса фильтров
+        function getFilterStatusText() {
+            if (activeFilters.length === 0 && excludedHashtags.length === 0) return "";
+            
+            let text = "Filters: ";
+            if (activeFilters.length > 0) {
+                text += `Showing ${activeFilters.join(', ')}`;
+            }
+            if (excludedHashtags.length > 0) {
+                if (activeFilters.length > 0) text += " and ";
+                text += `Excluding ${excludedHashtags.join(', ')}`;
+            }
+            return text;
+        }
 
-        // Остальные функции остаются без изменений
+        // Переключение фильтра хештегов
+        function toggleHashtagFilter(hashtag) {
+            const event = window.event;
+            
+            if (event.ctrlKey || event.metaKey) {
+                // Ctrl+Click - исключить хештег
+                const index = excludedHashtags.indexOf(hashtag);
+                if (index === -1) {
+                    excludedHashtags.push(hashtag);
+                    // Если хештег был в активных, убираем его
+                    const activeIndex = activeFilters.indexOf(hashtag);
+                    if (activeIndex !== -1) {
+                        activeFilters.splice(activeIndex, 1);
+                    }
+                } else {
+                    excludedHashtags.splice(index, 1);
+                }
+            } else {
+                // Обычный клик - фильтр по хештегу
+                const index = activeFilters.indexOf(hashtag);
+                if (index === -1) {
+                    activeFilters.push(hashtag);
+                    // Если хештег был в исключенных, убираем его
+                    const excludedIndex = excludedHashtags.indexOf(hashtag);
+                    if (excludedIndex !== -1) {
+                        excludedHashtags.splice(excludedIndex, 1);
+                    }
+                } else {
+                    activeFilters.splice(index, 1);
+                }
+            }
+            
+            // Сбрасываем индекс при изменении фильтров
+            currentIndex = 0;
+            updateFactDisplay();
+        }
+
+        // Сброс фильтров
+        function resetFilters() {
+            activeFilters = [];
+            excludedHashtags = [];
+            currentIndex = 0;
+            updateFactDisplay();
+        }
+
+        // Обновление прогресса просмотра
+        function updateProgress() {
+            const progressIndicator = document.getElementById("progressIndicator");
+            const total = facts.length;
+            const viewed = viewedFacts.length;
+            const percentage = total > 0 ? Math.round((viewed / total) * 100) : 0;
+            
+            progressIndicator.textContent = `${percentage}%`;
+            progressIndicator.style.backgroundColor = percentage === 100 ? 
+                "#4CAF50" : percentage > 70 ? 
+                "#8BC34A" : percentage > 40 ? 
+                "#FFC107" : "#F44336";
+        }
+
+        // Обновление состояния кнопок навигации
+        function updateNavButtons() {
+            const filteredFacts = getFilteredFacts();
+            document.getElementById("prevBtn").disabled = filteredFacts.length <= 1;
+            document.getElementById("nextBtn").disabled = filteredFacts.length <= 1;
+        }
+
+        // Следующий факт
+        function NF() {
+            const filteredFacts = getFilteredFacts();
+            if (filteredFacts.length === 0) return;
+            
+            currentIndex = (currentIndex + 1) % filteredFacts.length;
+            updateFactDisplay();
+        }
+
+        // Предыдущий факт
+        function PF() {
+            const filteredFacts = getFilteredFacts();
+            if (filteredFacts.length === 0) return;
+            
+            currentIndex = (currentIndex - 1 + filteredFacts.length) % filteredFacts.length;
+            updateFactDisplay();
+        }
+
+        // Случайный факт
+        function randomFact() {
+            const filteredFacts = getFilteredFacts();
+            if (filteredFacts.length === 0) return;
+            
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * filteredFacts.length);
+            } while (newIndex === currentIndex && filteredFacts.length > 1);
+            
+            currentIndex = newIndex;
+            updateFactDisplay();
+        }
+
+        // Обработка клавиатуры
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "ArrowRight") NF();
+            if (e.key === "ArrowLeft") PF();
+            if (e.key === " ") randomFact();
+        });
     </script>
 </body>
 </html>
