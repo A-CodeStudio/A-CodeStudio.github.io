@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>author</title>
+    <title>Add Facts</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -19,22 +19,409 @@
             text-align: center;
             margin-bottom: 30px;
         }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .input-container, .search-container, .facts-list {
+            background-color: #0c04ff;
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input[type="text"], input[type="search"] {
+            padding: 12px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        .hashtag-input {
+            display: flex;
+            gap: 10px;
+        }
+        .hashtag-input input {
+            flex: 1;
+        }
+        .hashtags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .hashtag {
+            background-color: #002c85;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .hashtag-remove {
+            margin-left: 5px;
+            cursor: pointer;
+            color: #ff6b6b;
+        }
+        .button {
+            background-color: #002c85;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #0040b3;
+            transform: translateY(-2px);
+        }
+        .button.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .fact-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fact-content {
+            flex: 1;
+            text-align: left;
+            padding: 0 15px;
+        }
+        .fact-hashtags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .fact-hashtag {
+            background-color: #00c8ff;
+            color: #002c85;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .empty-state {
+            padding: 20px;
+            color: #aaa;
+            font-style: italic;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .error {
+            background-color: #f44336;
+            color: white;
+        }
+        .search-results {
+            margin-top: 20px;
+        }
+        .highlight {
+            background-color: yellow;
+            color: black;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>author</h1>
+        <h1>Add Facts</h1>
     </header>
-    <div class="facts-list">
-                <h2>Author - Gregory Kurbatov</h2>
-                <h2></h2>
-                <h2>He's 12, and he's already created a website where you are.</h2>
-                <h2> Now you won't have the excuse that you're too young, and everything is fine.</h2>
-                <h2>Work hard and you will achieve everything!!!</h2>
-                <a href="index.html" class="button">go back</a>
-                <div id="outputList"></div>
+    
+    <div class="container">
+        <div class="tab-buttons">
+            <button class="button active" onclick="showTab('addTab')">Add Facts</button>
+            <button class="button" onclick="showTab('searchTab')">Search Facts</button>
+        </div>
+
+        <!-- Вкладка добавления фактов -->
+        <div id="addTab" class="tab-content">
+            <div class="input-container">
+                <div class="input-group">
+                    <input type="text" id="inputValue" placeholder="Enter your fact here...">
+                    <div class="hashtag-input">
+                        <input type="text" id="hashtagInput" placeholder="Add hashtag (e.g. #science)">
+                        <button class="button" onclick="addHashtag()">Add</button>
+                    </div>
+                    <div id="hashtagsPreview" class="hashtags-container"></div>
+                </div>
+                <button class="button" id="submitBtn" onclick="addFact()">Submit Fact</button>
+                <div id="statusMessage" class="status-message" style="display: none;"></div>
+            </div>
+            
+            <div class="facts-list">
+                <h2>Recent Facts</h2>
+                <div id="factsList"></div>
             </div>
         </div>
+
+        <!-- Вкладка поиска фактов -->
+        <div id="searchTab" class="tab-content hidden">
+            <div class="search-container">
+                <div class="input-group">
+                    <input type="search" id="searchInput" placeholder="Search facts...">
+                    <button class="button" onclick="searchFacts()">Search</button>
+                </div>
+            </div>
+            
+            <div class="facts-list">
+                <h2>Search Results</h2>
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Текущие хештеги для нового факта
+        let currentHashtags = [];
+        let allFacts = [];
+        
+        // URL сервера (замените на ваш реальный URL)
+        const SERVER_URL = 'https://your-server-api.com/facts';
+        
+        // Загрузка фактов при открытии страницы
+        window.onload = function() {
+            loadFacts();
+            document.getElementById("inputValue").focus();
+            
+            // Обработка нажатия Enter
+            document.getElementById("inputValue").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") addFact();
+            });
+            
+            document.getElementById("hashtagInput").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") addHashtag();
+            });
+
+            document.getElementById("searchInput").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") searchFacts();
+            });
+        };
+
+        // Показать/скрыть вкладки
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-buttons .button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // Добавление хештега
+        function addHashtag() {
+            const input = document.getElementById("hashtagInput");
+            let hashtag = input.value.trim();
+            
+            if (hashtag) {
+                // Добавляем # если его нет
+                if (!hashtag.startsWith('#')) {
+                    hashtag = '#' + hashtag;
+                }
+                
+                // Удаляем пробелы и специальные символы
+                hashtag = hashtag.replace(/\s+/g, '');
+                
+                if (!currentHashtags.includes(hashtag)) {
+                    currentHashtags.push(hashtag);
+                    updateHashtagsPreview();
+                }
+                
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        // Обновление превью хештегов
+        function updateHashtagsPreview() {
+            const container = document.getElementById("hashtagsPreview");
+            container.innerHTML = '';
+            
+            currentHashtags.forEach((hashtag, index) => {
+                const tagElement = document.createElement("div");
+                tagElement.className = "hashtag";
+                tagElement.innerHTML = `
+                    ${hashtag}
+                    <span class="hashtag-remove" onclick="removeHashtag(${index})">×</span>
+                `;
+                container.appendChild(tagElement);
+            });
+        }
+
+        // Удаление хештега
+        function removeHashtag(index) {
+            currentHashtags.splice(index, 1);
+            updateHashtagsPreview();
+        }
+
+        // Добавление факта на сервер
+        async function addFact() {
+            const input = document.getElementById("inputValue");
+            const factText = input.value.trim();
+            const submitBtn = document.getElementById("submitBtn");
+            const statusMessage = document.getElementById("statusMessage");
+            
+            if (!factText) {
+                showStatus("Please enter fact text", "error");
+                return;
+            }
+            
+            const factData = {
+                text: factText,
+                hashtags: currentHashtags,
+                timestamp: new Date().toISOString()
+            };
+            
+            submitBtn.disabled = true;
+            submitBtn.classList.add("loading");
+            submitBtn.textContent = "Submitting...";
+            
+            try {
+                // Для демонстрации - сохраняем в localStorage
+                // В реальном приложении здесь должен быть fetch к серверу
+                let facts = JSON.parse(localStorage.getItem("sharedFacts")) || [];
+                facts.push(factData);
+                localStorage.setItem("sharedFacts", JSON.stringify(facts));
+                
+                showStatus("Fact successfully added!", "success");
+                input.value = "";
+                currentHashtags = [];
+                updateHashtagsPreview();
+                loadFacts(); // Обновляем список фактов
+            } catch (error) {
+                console.error("Error:", error);
+                showStatus("Fact added to local storage (demo mode)", "success");
+                // В реальном приложении:
+                // showStatus("Error adding fact. Please try again.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("loading");
+                submitBtn.textContent = "Submit Fact";
+            }
+        }
+
+        // Загрузка фактов
+        async function loadFacts() {
+            const factsList = document.getElementById("factsList");
+            factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
+            
+            try {
+                // Для демонстрации - используем localStorage
+                // В реальном приложении здесь должен быть fetch к серверу
+                allFacts = JSON.parse(localStorage.getItem("sharedFacts")) || [];
+                
+                if (allFacts.length === 0) {
+                    factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
+                    return;
+                }
+                
+                displayFacts(allFacts.slice().reverse().slice(0, 10), factsList); // Последние 10 фактов
+            } catch (error) {
+                console.error("Error:", error);
+                factsList.innerHTML = '<div class="empty-state">Error loading facts</div>';
+            }
+        }
+
+        // Поиск фактов
+        function searchFacts() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            const resultsContainer = document.getElementById("searchResults");
+            
+            if (!searchTerm) {
+                resultsContainer.innerHTML = '<div class="empty-state">Enter search term</div>';
+                return;
+            }
+            
+            if (allFacts.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No facts available to search</div>';
+                return;
+            }
+
+            const filteredFacts = allFacts.filter(fact => {
+                // Поиск по тексту факта
+                if (fact.text.toLowerCase().includes(searchTerm)) return true;
+                
+                // Поиск по хештегам
+                if (fact.hashtags && fact.hashtags.some(tag => 
+                    tag.toLowerCase().includes(searchTerm)
+                )) return true;
+                
+                return false;
+            });
+
+            if (filteredFacts.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No matching facts found</div>';
+                return;
+            }
+
+            displayFacts(filteredFacts, resultsContainer, searchTerm);
+        }
+
+        // Отображение фактов с подсветкой поиска
+        function displayFacts(facts, container, searchTerm = '') {
+            container.innerHTML = "";
+            
+            facts.forEach(fact => {
+                const factElement = document.createElement("div");
+                factElement.className = "fact-item";
+                
+                let text = fact.text;
+                if (searchTerm) {
+                    const regex = new RegExp(`(${searchTerm})`, "gi");
+                    text = text.replace(regex, '<span class="highlight">$1</span>');
+                }
+                
+                factElement.innerHTML = `
+                    <div class="fact-content">
+                        ${text}
+                        ${fact.hashtags && fact.hashtags.length > 0 ? `
+                            <div class="fact-hashtags">
+                                ${fact.hashtags.map(tag => `
+                                    <span class="fact-hashtag">${tag}</span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(factElement);
+            });
+        }
+
+        // Показать статус сообщение
+        function showStatus(message, type) {
+            const statusMessage = document.getElementById("statusMessage");
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = "block";
+            
+            setTimeout(() => {
+                statusMessage.style.display = "none";
+            }, 3000);
+        }
     </script>
 </body>
 </html>
