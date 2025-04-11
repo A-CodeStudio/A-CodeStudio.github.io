@@ -227,7 +227,7 @@
         <div class="counter" id="counter">Fact 0/0</div>
         
         <div id="factDisplay">
-            <div class="fact-text" id="factText">No facts available</div>
+            <div class="fact-text" id="factText">Loading facts...</div>
         </div>
         
         <div class="view-status" id="viewStatus"></div>
@@ -245,11 +245,12 @@
     <div class="server-indicator" id="serverStatus">Loading...</div>
 
     <script>
-        // URL сервера (замените на ваш реальный URL)
-        const SERVER_URL = 'https://your-server-api.com/facts';
-        const LOCAL_STORAGE_KEY = 'sharedFacts';
+        // GitHub configuration
+        const GITHUB_USER = 'yourusername';
+        const GITHUB_REPO = 'yourrepository';
+        const FACTS_FILE = 'facts.json';
         
-        // Состояние приложения
+        // App state
         let facts = [];
         let starredFacts = JSON.parse(localStorage.getItem("starredFacts")) || [];
         let viewedFacts = JSON.parse(localStorage.getItem("viewedFacts")) || [];
@@ -257,29 +258,22 @@
         let firstView = true;
         let activeFilters = [];
         let excludedHashtags = [];
-        let isUsingServer = false;
         
-        // Статистика посещений
+        // Visitor stats
         let visitorStats = JSON.parse(localStorage.getItem("visitorStats")) || {
             count: 0,
             clicks: 0,
             lastVisit: null
         };
 
-        // Инициализация при загрузке страницы
+        // Initialize on page load
         window.onload = async function() {
-            // Обновляем статистику посещений
             updateVisitorStats();
-            
-            // Загружаем факты
-            await loadFacts();
-            
-            // Инициализируем отображение
+            await loadFactsFromGitHub();
             updateFactDisplay();
             updateProgress();
             updateNavButtons();
             
-            // Назначаем обработчик клика для ссылки Author
             document.getElementById('authorLink').addEventListener('click', function() {
                 if (!sessionStorage.getItem('clicked')) {
                     visitorStats.clicks++;
@@ -290,7 +284,7 @@
             });
         };
 
-        // Обновление статистики посещений
+        // Update visitor stats
         function updateVisitorStats() {
             if (!sessionStorage.getItem('visited')) {
                 visitorStats.count++;
@@ -303,30 +297,33 @@
                 visitorStats.count > 0 ? Math.round((visitorStats.clicks / visitorStats.count) * 100) + '%' : '0%';
         }
 
-        // Загрузка фактов с сервера или из localStorage
-        async function loadFacts() {
+        // Load facts from GitHub
+        async function loadFactsFromGitHub() {
             const statusElement = document.getElementById('serverStatus');
+            statusElement.textContent = 'Connecting to GitHub...';
             
             try {
-                // Пытаемся загрузить с сервера
-                const response = await fetch(SERVER_URL);
-                if (response.ok) {
-                    facts = await response.json();
-                    isUsingServer = true;
-                    statusElement.textContent = 'Connected to server';
-                } else {
-                    throw new Error('Server error');
+                const url = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
+                const data = await response.json();
+                facts = Array.isArray(data) ? data : [];
+                
+                statusElement.textContent = 'Connected to GitHub';
+                return true;
             } catch (error) {
-                // Если сервер недоступен, используем localStorage
-                facts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
-                isUsingServer = false;
+                console.error("GitHub error:", error);
+                facts = JSON.parse(localStorage.getItem("localFacts")) || [];
                 statusElement.textContent = 'Using local storage';
-                console.warn("Using local storage:", error);
+                return false;
             }
         }
 
-        // Функция отображения текущего факта
+        // Update fact display
         function updateFactDisplay() {
             const factDisplay = document.getElementById("factDisplay");
             const factText = document.getElementById("factText");
@@ -345,7 +342,7 @@
                 return;
             }
 
-            // Получаем отфильтрованные факты
+            // Get filtered facts
             const filteredFacts = getFilteredFacts();
             if (filteredFacts.length === 0) {
                 factDisplay.innerHTML = '<div class="fact-text no-facts">No facts match current filters</div>';
@@ -354,7 +351,7 @@
                 return;
             }
             
-            // Корректируем индекс, если он вне диапазона
+            // Adjust index if out of bounds
             if (currentIndex >= filteredFacts.length) {
                 currentIndex = 0;
             }
@@ -364,11 +361,11 @@
             const isStarred = starredFacts.includes(originalIndex);
             const isNew = !viewedFacts.includes(originalIndex);
             
-            // Обновляем статус фильтров
+            // Update filter status
             resetFilters.style.display = (activeFilters.length > 0 || excludedHashtags.length > 0) ? "block" : "none";
             filterStatus.textContent = getFilterStatusText();
             
-            // Создаем HTML для отображения факта
+            // Create HTML for fact display
             let factHTML = '';
             if (isStarred) {
                 factHTML = `
@@ -383,7 +380,7 @@
                 `;
             }
             
-            // Добавляем хештеги
+            // Add hashtags
             if (fact.hashtags && fact.hashtags.length > 0) {
                 factHTML += `
                     <div class="fact-hashtags">
@@ -405,11 +402,11 @@
             factDisplay.innerHTML = factHTML;
             counter.textContent = `Fact ${currentIndex + 1}/${filteredFacts.length}`;
             
-            // Обновляем индикаторы
+            // Update indicators
             newIndicator.style.display = isNew ? "block" : "none";
             viewStatus.textContent = isNew ? "You haven't seen this fact before" : "You've viewed this fact before";
             
-            // Добавляем в просмотренные, если это новый факт
+            // Add to viewed facts if new
             if (isNew) {
                 viewedFacts.push(originalIndex);
                 localStorage.setItem("viewedFacts", JSON.stringify(viewedFacts));
@@ -417,21 +414,21 @@
             }
         }
 
-        // Получаем отфильтрованные факты
+        // Get filtered facts
         function getFilteredFacts() {
             if (activeFilters.length === 0 && excludedHashtags.length === 0) {
                 return facts;
             }
             
             return facts.filter(fact => {
-                // Проверка активных фильтров
+                // Check active filters
                 if (activeFilters.length > 0) {
                     const hasActiveTags = fact.hashtags && 
                         activeFilters.some(tag => fact.hashtags.includes(tag));
                     if (!hasActiveTags) return false;
                 }
                 
-                // Проверка исключенных хештегов
+                // Check excluded hashtags
                 if (excludedHashtags.length > 0 && fact.hashtags) {
                     const hasExcludedTags = fact.hashtags.some(tag => 
                         excludedHashtags.includes(tag));
@@ -442,7 +439,7 @@
             });
         }
 
-        // Текст статуса фильтров
+        // Filter status text
         function getFilterStatusText() {
             if (activeFilters.length === 0 && excludedHashtags.length === 0) return "";
             
@@ -457,16 +454,16 @@
             return text;
         }
 
-        // Переключение фильтра хештегов
+        // Toggle hashtag filter
         function toggleHashtagFilter(hashtag) {
             const event = window.event;
             
             if (event.ctrlKey || event.metaKey) {
-                // Ctrl+Click - исключить хештег
+                // Ctrl+Click - exclude hashtag
                 const index = excludedHashtags.indexOf(hashtag);
                 if (index === -1) {
                     excludedHashtags.push(hashtag);
-                    // Если хештег был в активных, убираем его
+                    // Remove from active if present
                     const activeIndex = activeFilters.indexOf(hashtag);
                     if (activeIndex !== -1) {
                         activeFilters.splice(activeIndex, 1);
@@ -475,11 +472,11 @@
                     excludedHashtags.splice(index, 1);
                 }
             } else {
-                // Обычный клик - фильтр по хештегу
+                // Regular click - filter by hashtag
                 const index = activeFilters.indexOf(hashtag);
                 if (index === -1) {
                     activeFilters.push(hashtag);
-                    // Если хештег был в исключенных, убираем его
+                    // Remove from excluded if present
                     const excludedIndex = excludedHashtags.indexOf(hashtag);
                     if (excludedIndex !== -1) {
                         excludedHashtags.splice(excludedIndex, 1);
@@ -489,12 +486,12 @@
                 }
             }
             
-            // Сбрасываем индекс при изменении фильтров
+            // Reset index when filters change
             currentIndex = 0;
             updateFactDisplay();
         }
 
-        // Сброс фильтров
+        // Reset all filters
         function resetFilters() {
             activeFilters = [];
             excludedHashtags = [];
@@ -502,7 +499,7 @@
             updateFactDisplay();
         }
 
-        // Обновление прогресса просмотра
+        // Update progress
         function updateProgress() {
             const progressIndicator = document.getElementById("progressIndicator");
             const total = facts.length;
@@ -516,14 +513,14 @@
                 "#FFC107" : "#F44336";
         }
 
-        // Обновление состояния кнопок навигации
+        // Update navigation buttons
         function updateNavButtons() {
             const filteredFacts = getFilteredFacts();
             document.getElementById("prevBtn").disabled = filteredFacts.length <= 1;
             document.getElementById("nextBtn").disabled = filteredFacts.length <= 1;
         }
 
-        // Следующий факт
+        // Next fact
         function NF() {
             const filteredFacts = getFilteredFacts();
             if (filteredFacts.length === 0) return;
@@ -532,7 +529,7 @@
             updateFactDisplay();
         }
 
-        // Предыдущий факт
+        // Previous fact
         function PF() {
             const filteredFacts = getFilteredFacts();
             if (filteredFacts.length === 0) return;
@@ -541,7 +538,7 @@
             updateFactDisplay();
         }
 
-        // Случайный факт
+        // Random fact
         function randomFact() {
             const filteredFacts = getFilteredFacts();
             if (filteredFacts.length === 0) return;
@@ -555,7 +552,7 @@
             updateFactDisplay();
         }
 
-        // Обработка клавиатуры
+        // Keyboard navigation
         document.addEventListener("keydown", function(e) {
             if (e.key === "ArrowRight") NF();
             if (e.key === "ArrowLeft") PF();
