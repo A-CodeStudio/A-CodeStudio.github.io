@@ -164,6 +164,15 @@
         .tab-content.hidden {
             display: none;
         }
+        .delete-btn {
+            background-color: #f44336 !important;
+            padding: 8px 15px !important;
+            font-size: 14px !important;
+            margin-left: 10px;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f !important;
+        }
     </style>
 </head>
 <body>
@@ -275,6 +284,38 @@
                 input.focus();
             }
         }
+async function deleteFact(index) {
+    if (!confirm("Are you sure you want to delete this fact?")) return;
+
+    try {
+        // 1. Get current facts
+        let currentFacts = await getCurrentFacts();
+        
+        // 2. Remove the fact
+        currentFacts.splice(index, 1);
+        
+        // 3. Try to update on GitHub
+        try {
+            const updateSuccess = await updateFactsOnGitHub(currentFacts);
+            
+            if (updateSuccess) {
+                showStatus("Fact deleted successfully!", "success");
+                // Refresh the list
+                loadFacts();
+            }
+        } catch (githubError) {
+            console.error("GitHub update failed, saving locally:", githubError);
+            
+            // GitHub failed - save locally
+            localStorage.setItem("localFactsBackup", JSON.stringify(currentFacts));
+            showStatus("Deleted locally (GitHub failed)", "warning");
+            loadFacts();
+        }
+    } catch (error) {
+        console.error("Error deleting fact:", error);
+        showStatus("Error deleting fact: " + error.message, "error");
+    }
+}
 
         // Update hashtags preview
         function updateHashtagsPreview() {
@@ -544,6 +585,7 @@
                             </div>
                         ` : ''}
                     </div>
+                    <button class="button delete-btn" onclick="deleteFact(${allFacts.indexOf(fact)})">Delete</button>
                 `;
                 container.appendChild(factElement);
             });
