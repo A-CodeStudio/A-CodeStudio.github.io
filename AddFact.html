@@ -135,6 +135,10 @@
             background-color: #f44336;
             color: white;
         }
+        .warning {
+            background-color: #FFC107;
+            color: black;
+        }
         .search-results {
             margin-top: 20px;
         }
@@ -213,7 +217,7 @@
         const GITHUB_USER = 'A-CodeStudio';
         const GITHUB_REPO = 'Fact';
         const FACTS_FILE = 'facts.json';
-        const GITHUB_TOKEN = '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'; // Нужен для записи
+        const GITHUB_TOKEN = 'ghp_your_new_token_here'; // REPLACE WITH YOUR NEW TOKEN
         
         let currentHashtags = [];
         let allFacts = [];
@@ -294,7 +298,7 @@
             updateHashtagsPreview();
         }
 
-        // Add fact to GitHub
+        // Add fact to GitHub with improved error handling
         async function addFact() {
             const input = document.getElementById("inputValue");
             const factText = input.value.trim();
@@ -317,27 +321,37 @@
             submitBtn.textContent = "Submitting...";
             
             try {
-                // 1. Получаем текущие факты
+                // 1. Get current facts
                 let currentFacts = await getCurrentFacts();
                 
-                // 2. Добавляем новый факт
+                // 2. Add new fact
                 currentFacts.push(factData);
                 
-                // 3. Обновляем файл на GitHub
-                const updateSuccess = await updateFactsOnGitHub(currentFacts);
-                
-                if (updateSuccess) {
-                    showStatus("Fact successfully added!", "success");
-                    input.value = "";
-                    currentHashtags = [];
-                    updateHashtagsPreview();
-                    loadFacts();
-                } else {
-                    showStatus("Error adding fact to GitHub", "error");
+                // 3. Try to update on GitHub
+                try {
+                    const updateSuccess = await updateFactsOnGitHub(currentFacts);
+                    
+                    if (updateSuccess) {
+                        showStatus("Fact successfully added to GitHub!", "success");
+                        // Refresh the list
+                        loadFacts();
+                    }
+                } catch (githubError) {
+                    console.error("GitHub update failed, trying local storage:", githubError);
+                    
+                    // GitHub failed - save locally
+                    localStorage.setItem("localFactsBackup", JSON.stringify(currentFacts));
+                    showStatus("Saved locally (GitHub failed: " + githubError.message + ")", "warning");
                 }
+                
+                // Clear form if successful
+                input.value = "";
+                currentHashtags = [];
+                updateHashtagsPreview();
+                
             } catch (error) {
-                showStatus("Error adding fact", "error");
-                console.error("Error:", error);
+                console.error("Error adding fact:", error);
+                showStatus("Error: " + error.message, "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove("loading");
@@ -345,37 +359,15 @@
             }
         }
 
-        async function getCurrentFacts() {
-            try {
-                const response = await fetch(
-                    `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FACTS_FILE}`,
-                    {
-                        headers: {
-                            'Authorization': `token ${GITHUB_TOKEN}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    }
-                );
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        return []; // Файл не существует, вернем пустой массив
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                const content = atob(data.content); // Декодируем base64
-                return JSON.parse(content);
-            } catch (error) {
-                console.error("Error getting facts:", error);
-                throw error;
-            }
-        }
-
+        // Improved GitHub update function
         async function updateFactsOnGitHub(updatedFacts) {
             try {
-                // 1. Получаем текущий файл (чтобы получить SHA)
+                // 1. Prepare content
+                const content = JSON.stringify(updatedFacts, null, 2);
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
+                
+                // 2. Get current file SHA (if exists)
+                let sha = null;
                 const getResponse = await fetch(
                     `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FACTS_FILE}`,
                     {
@@ -385,17 +377,17 @@
                         }
                     }
                 );
-                
-                let sha = null;
+
                 if (getResponse.ok) {
                     const data = await getResponse.json();
                     sha = data.sha;
+                    console.log("Existing file SHA:", sha);
                 } else if (getResponse.status !== 404) {
-                    throw new Error(`HTTP error! status: ${getResponse.status}`);
+                    const errorData = await getResponse.json();
+                    throw new Error(`Failed to get file: ${errorData.message || getResponse.statusText}`);
                 }
-                
-                // 2. Обновляем файл
-                const content = btoa(JSON.stringify(updatedFacts, null, 2));
+
+                // 3. Update file
                 const updateResponse = await fetch(
                     `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FACTS_FILE}`,
                     {
@@ -406,26 +398,42 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            message: 'Update facts',
-                            content: content,
-                            sha: sha
+                            message: 'Update facts via web app',
+                            content: encodedContent,
+                            sha: sha || undefined
                         })
                     }
                 );
-                
-                return updateResponse.ok;
+
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    let errorMsg = `GitHub Error: ${updateResponse.status}`;
+                    
+                    if (errorData.message) {
+                        errorMsg += ` - ${errorData.message}`;
+                        
+                        // Specific error handling
+                        if (errorData.message.includes("bad credentials")) {
+                            errorMsg = "Invalid GitHub token - please check your token";
+                        } else if (errorData.message.includes("this repository is empty")) {
+                            errorMsg = "Repository is empty - please create facts.json first";
+                        }
+                    }
+                    
+                    throw new Error(errorMsg);
+                }
+
+                return true;
             } catch (error) {
-                console.error("Error updating facts:", error);
+                console.error("Update failed:", error);
                 throw error;
             }
         }
 
-        // Load facts from GitHub
-        async function loadFacts() {
-            const factsList = document.getElementById("factsList");
-            factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
-            
+        // Get current facts from GitHub or local storage
+        async function getCurrentFacts() {
             try {
+                // Try GitHub first
                 const response = await fetch(
                     `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FACTS_FILE}`,
                     {
@@ -435,19 +443,36 @@
                         }
                     }
                 );
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
-                        allFacts = [];
-                        return;
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const content = atob(data.content);
+                    return JSON.parse(content);
+                } else if (response.status === 404) {
+                    return []; // File doesn't exist yet
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(`GitHub error: ${errorData.message}`);
                 }
+            } catch (githubError) {
+                console.warn("GitHub load failed, trying local storage:", githubError);
                 
-                const data = await response.json();
-                const content = atob(data.content);
-                allFacts = JSON.parse(content);
+                // Fallback to local storage
+                const localFacts = localStorage.getItem("localFactsBackup");
+                if (localFacts) {
+                    return JSON.parse(localFacts);
+                }
+                return [];
+            }
+        }
+
+        // Load and display facts
+        async function loadFacts() {
+            const factsList = document.getElementById("factsList");
+            factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
+            
+            try {
+                allFacts = await getCurrentFacts();
                 
                 if (allFacts.length === 0) {
                     factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
@@ -456,8 +481,8 @@
                 
                 displayFacts(allFacts.slice().reverse().slice(0, 10), factsList);
             } catch (error) {
+                console.error("Load facts error:", error);
                 factsList.innerHTML = '<div class="empty-state">Error loading facts</div>';
-                console.error("Error:", error);
             }
         }
 
@@ -533,7 +558,7 @@
             
             setTimeout(() => {
                 statusMessage.style.display = "none";
-            }, 3000);
+            }, 5000);
         }
     </script>
 </body>
