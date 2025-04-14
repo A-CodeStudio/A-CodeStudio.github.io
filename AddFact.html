@@ -3,590 +3,505 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Facts</title>
+    <title>Add Facts</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
         body {
             background-color: #1a1a1a;
             color: #f5f5f5;
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            text-align: center;
         }
-        
         header {
             background-color: #00c8ff;
             padding: 20px;
             text-align: center;
             margin-bottom: 30px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        
         .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 0 20px 40px;
+            padding: 0 20px;
         }
-        
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #444;
-        }
-        
-        .tab-button {
-            padding: 12px 20px;
-            background: none;
-            border: none;
-            color: #f5f5f5;
-            cursor: pointer;
-            font-size: 1rem;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-        }
-        
-        .tab-button.active {
-            border-bottom-color: #00c8ff;
-            font-weight: bold;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 20px;
-            background-color: rgba(0,0,0,0.2);
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .input-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-        
-        textarea, input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            background-color: #333;
-            color: #f5f5f5;
-            font-family: inherit;
-            font-size: 1rem;
-        }
-        
-        textarea {
-            min-height: 150px;
-            resize: vertical;
-        }
-        
-        .button {
-            background-color: #002c85;
+        .input-container, .search-container, .facts-list {
+            background-color: #0c04ff;
             color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
-            margin-right: 10px;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
-        
-        .button:hover {
-            background-color: #0040b3;
-        }
-        
-        .button-danger {
-            background-color: #8b0000;
-        }
-        
-        .button-danger:hover {
-            background-color: #a00000;
-        }
-        
-        .status-message {
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 5px;
-            display: none;
-        }
-        
-        .success {
-            background-color: rgba(0, 100, 0, 0.5);
-            display: block;
-        }
-        
-        .error {
-            background-color: rgba(139, 0, 0, 0.5);
-            display: block;
-        }
-        
-        .facts-list {
-            margin-top: 20px;
-        }
-        
-        .fact-item {
-            background-color: rgba(0,0,0,0.2);
-            padding: 15px;
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             margin-bottom: 15px;
+        }
+        input[type="text"], input[type="search"] {
+            padding: 12px;
             border-radius: 5px;
-            position: relative;
+            border: none;
+            font-size: 16px;
         }
-        
-        .fact-text {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-        
-        .fact-meta {
-            font-size: 0.8rem;
-            color: #aaa;
-            margin-bottom: 10px;
-        }
-        
-        .fact-actions {
+        .hashtag-input {
             display: flex;
             gap: 10px;
         }
-        
-        .tag {
-            display: inline-block;
+        .hashtag-input input {
+            flex: 1;
+        }
+        .hashtags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .hashtag {
+            background-color: #002c85;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .hashtag-remove {
+            margin-left: 5px;
+            cursor: pointer;
+            color: #ff6b6b;
+        }
+        .button {
+            background-color: #002c85;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #0040b3;
+            transform: translateY(-2px);
+        }
+        .button.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .delete-btn {
+            background-color: #f44336 !important;
+            padding: 8px 15px !important;
+            font-size: 14px !important;
+            margin-left: 10px;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f !important;
+        }
+        .fact-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fact-content {
+            flex: 1;
+            text-align: left;
+            padding: 0 15px;
+        }
+        .fact-hashtags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .fact-hashtag {
             background-color: #00c8ff;
             color: #002c85;
             padding: 3px 8px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            margin-right: 5px;
-            margin-bottom: 5px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
         }
-        
-        .tag-input-container {
+        .empty-state {
+            padding: 20px;
+            color: #aaa;
+            font-style: italic;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .error {
+            background-color: #f44336;
+            color: white;
+        }
+        .warning {
+            background-color: #FFC107;
+            color: black;
+        }
+        .search-results {
+            margin-top: 20px;
+        }
+        .highlight {
+            background-color: yellow;
+            color: black;
+        }
+        .tab-buttons {
             display: flex;
-            margin-bottom: 15px;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        
-        .tag-input {
-            flex-grow: 1;
-            margin-right: 10px;
+        .tab-buttons .button {
+            margin: 0;
         }
-        
-        .tags-display {
-            margin-bottom: 15px;
-            min-height: 30px;
+        .tab-buttons .button.active {
+            background-color: #0040b3;
         }
-        
-        @media (max-width: 600px) {
-            .container {
-                padding: 0 15px 30px;
-            }
-            
-            .tab-button {
-                padding: 10px 15px;
-                font-size: 0.9rem;
-            }
-            
-            .button {
-                padding: 10px 15px;
-                margin-bottom: 10px;
-                width: 100%;
-            }
-            
-            .fact-actions {
-                flex-direction: column;
-            }
+        .tab-content {
+            display: block;
+        }
+        .tab-content.hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Manage Facts</h1>
-        <p>Add and edit interesting facts</p>
+        <h1>Add Facts</h1>
     </header>
     
     <div class="container">
-        <div class="tabs">
-            <button class="tab-button active" data-tab="add">Add Fact</button>
-            <button class="tab-button" data-tab="browse">Browse Facts</button>
+        <div class="tab-buttons">
+            <button class="button active" onclick="showTab('addTab')">Add Facts</button>
+            <button class="button" onclick="showTab('searchTab')">Search Facts</button>
         </div>
-        
-        <div id="addTab" class="tab-content active">
-            <div class="input-group">
-                <label for="factText">Fact Content</label>
-                <textarea id="factText" placeholder="Enter your interesting fact here..."></textarea>
-            </div>
-            
-            <div class="input-group">
-                <label>Tags (optional)</label>
-                <div class="tag-input-container">
-                    <input type="text" id="tagInput" class="tag-input" placeholder="Add tag (e.g. science)">
-                    <button id="addTagBtn" class="button">Add Tag</button>
+
+        <div id="addTab" class="tab-content">
+            <div class="input-container">
+                <div class="input-group">
+                    <input type="text" id="inputValue" placeholder="Enter your fact here...">
+                    <div class="hashtag-input">
+                        <input type="text" id="hashtagInput" placeholder="Add hashtag (e.g. #science)">
+                        <button class="button" onclick="addHashtag()">Add</button>
+                    </div>
+                    <div id="hashtagsPreview" class="hashtags-container"></div>
                 </div>
-                <div id="tagsDisplay" class="tags-display"></div>
+                <button class="button" id="submitBtn" onclick="addFact()">Submit Fact</button>
+                <div id="statusMessage" class="status-message" style="display: none;"></div>
             </div>
             
-            <button id="submitFactBtn" class="button">Submit Fact</button>
-            <div id="statusMessage" class="status-message"></div>
+            <div class="facts-list">
+                <h2>Recent Facts</h2>
+                <div id="factsList"></div>
+            </div>
         </div>
-        
-        <div id="browseTab" class="tab-content">
-            <div class="input-group">
-                <input type="text" id="searchInput" placeholder="Search facts...">
-                <button id="searchBtn" class="button">Search</button>
+
+        <div id="searchTab" class="tab-content hidden">
+            <div class="search-container">
+                <div class="input-group">
+                    <input type="search" id="searchInput" placeholder="Search facts...">
+                    <button class="button" onclick="searchFacts()">Search</button>
+                </div>
             </div>
             
-            <div id="factsList" class="facts-list">
-                <!-- Facts will be loaded here -->
+            <div class="facts-list">
+                <h2>Search Results</h2>
+                <div id="searchResults" class="search-results"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const config = {
-            githubUser: 'A-CodeStudio',
-            githubRepo: 'Fact',
-            factsFile: 'facts.json',
-            githubToken: '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', // Replace with your token
-            apiUrl: 'https://github.com/A-CodeStudio/Fact/'
+        // GitHub configuration
+        const GITHUB_USER = 'A-CodeStudio';
+        const GITHUB_REPO = 'Fact';
+        const FACTS_FILE = 'facts.json';
+        
+        let currentHashtags = [];
+        let allFacts = [];
+        
+        // Initialize on page load
+        window.onload = function() {
+            loadFacts();
+            document.getElementById("inputValue").focus();
+            
+            // Enter key handlers
+            document.getElementById("inputValue").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") addFact();
+            });
+            
+            document.getElementById("hashtagInput").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") addHashtag();
+            });
+
+            document.getElementById("searchInput").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") searchFacts();
+            });
         };
-        
-        // App state
-        const state = {
-            currentTags: [],
-            facts: [],
-            currentTab: 'add',
-            fileSha: null
-        };
-        
-        // DOM elements
-        const elements = {
-            factText: document.getElementById('factText'),
-            tagInput: document.getElementById('tagInput'),
-            addTagBtn: document.getElementById('addTagBtn'),
-            tagsDisplay: document.getElementById('tagsDisplay'),
-            submitFactBtn: document.getElementById('submitFactBtn'),
-            statusMessage: document.getElementById('statusMessage'),
-            tabButtons: document.querySelectorAll('.tab-button'),
-            tabContents: document.querySelectorAll('.tab-content'),
-            searchInput: document.getElementById('searchInput'),
-            searchBtn: document.getElementById('searchBtn'),
-            factsList: document.getElementById('factsList')
-        };
-        
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', async () => {
-            setupEventListeners();
-            await loadFileSha();
-            await loadFacts();
-        });
-        
-        // Event listeners setup
-        function setupEventListeners() {
-            // Tab switching
-            elements.tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const tabId = button.dataset.tab;
-                    switchTab(tabId);
-                });
+
+        // Show/hide tabs
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
             });
+            document.getElementById(tabId).classList.remove('hidden');
             
-            // Tag management
-            elements.addTagBtn.addEventListener('click', addTag);
-            elements.tagInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addTag();
+            document.querySelectorAll('.tab-buttons .button').forEach(btn => {
+                btn.classList.remove('active');
             });
-            
-            // Fact submission
-            elements.submitFactBtn.addEventListener('click', submitFact);
-            
-            // Search functionality
-            elements.searchBtn.addEventListener('click', searchFacts);
-            elements.searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchFacts();
-            });
+            event.target.classList.add('active');
         }
-        
-        // Tab switching
-        function switchTab(tabId) {
-            state.currentTab = tabId;
+
+        // Add hashtag to current fact
+        function addHashtag() {
+            const input = document.getElementById("hashtagInput");
+            let hashtag = input.value.trim();
             
-            // Update active tab button
-            elements.tabButtons.forEach(button => {
-                button.classList.toggle('active', button.dataset.tab === tabId);
-            });
-            
-            // Update visible tab content
-            elements.tabContents.forEach(content => {
-                content.classList.toggle('active', content.id === `${tabId}Tab`);
-            });
-            
-            // If browsing tab is selected, refresh the list
-            if (tabId === 'browse') {
-                displayAllFacts();
-            }
-        }
-        
-        // Tag management
-        function addTag() {
-            const tagText = elements.tagInput.value.trim();
-            if (!tagText) return;
-            
-            // Format tag (remove spaces, add # if missing)
-            let formattedTag = tagText.replace(/\s+/g, '');
-            if (!formattedTag.startsWith('#')) {
-                formattedTag = '#' + formattedTag;
-            }
-            
-            // Add to current tags if not already present
-            if (!state.currentTags.includes(formattedTag)) {
-                state.currentTags.push(formattedTag);
-                updateTagsDisplay();
-                elements.tagInput.value = '';
-            }
-        }
-        
-        function removeTag(tag) {
-            state.currentTags = state.currentTags.filter(t => t !== tag);
-            updateTagsDisplay();
-        }
-        
-        function updateTagsDisplay() {
-            elements.tagsDisplay.innerHTML = '';
-            state.currentTags.forEach(tag => {
-                const tagElement = document.createElement('span');
-                tagElement.className = 'tag';
-                tagElement.textContent = tag;
+            if (hashtag) {
+                if (!hashtag.startsWith('#')) {
+                    hashtag = '#' + hashtag;
+                }
                 
-                const removeBtn = document.createElement('button');
-                removeBtn.innerHTML = '&times;';
-                removeBtn.style.marginLeft = '5px';
-                removeBtn.style.background = 'none';
-                removeBtn.style.border = 'none';
-                removeBtn.style.color = '#002c85';
-                removeBtn.style.cursor = 'pointer';
-                removeBtn.addEventListener('click', () => removeTag(tag));
+                hashtag = hashtag.replace(/\s+/g, '');
                 
-                tagElement.appendChild(removeBtn);
-                elements.tagsDisplay.appendChild(tagElement);
+                if (!currentHashtags.includes(hashtag)) {
+                    currentHashtags.push(hashtag);
+                    updateHashtagsPreview();
+                }
+                
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        // Update hashtags preview
+        function updateHashtagsPreview() {
+            const container = document.getElementById("hashtagsPreview");
+            container.innerHTML = '';
+            
+            currentHashtags.forEach((hashtag, index) => {
+                const tagElement = document.createElement("div");
+                tagElement.className = "hashtag";
+                tagElement.innerHTML = `
+                    ${hashtag}
+                    <span class="hashtag-remove" onclick="removeHashtag(${index})">×</span>
+                `;
+                container.appendChild(tagElement);
             });
         }
-        
-        // Fact submission
-        async function submitFact() {
-            const factContent = elements.factText.value.trim();
-            if (!factContent) {
-                showStatus('Please enter fact content', 'error');
+
+        // Remove hashtag
+        function removeHashtag(index) {
+            currentHashtags.splice(index, 1);
+            updateHashtagsPreview();
+        }
+
+        // Add fact (сохраняет локально и предлагает добавить вручную в GitHub)
+        async function addFact() {
+            const input = document.getElementById("inputValue");
+            const factText = input.value.trim();
+            const submitBtn = document.getElementById("submitBtn");
+            const statusMessage = document.getElementById("statusMessage");
+            
+            if (!factText) {
+                showStatus("Please enter fact text", "error");
                 return;
             }
             
-            const newFact = {
-                id: generateId(),
-                text: factContent,
-                tags: state.currentTags,
+            const factData = {
+                text: factText,
+                hashtags: currentHashtags,
                 timestamp: new Date().toISOString()
             };
             
+            submitBtn.disabled = true;
+            submitBtn.classList.add("loading");
+            submitBtn.textContent = "Submitting...";
+            
             try {
-                // Add to local state
-                state.facts.unshift(newFact);
+                // Пытаемся загрузить текущие факты с GitHub
+                let currentFacts = [];
+                try {
+                    const response = await fetch(
+                        `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?t=${Date.now()}`,
+                        { cache: 'no-store' }
+                    );
+                    
+                    if (response.ok) {
+                        currentFacts = await response.json();
+                        if (!Array.isArray(currentFacts)) currentFacts = [];
+                    }
+                } catch (e) {
+                    console.log("Failed to load from GitHub, using local storage");
+                }
                 
-                // Update on GitHub
-                await updateFactsOnGitHub();
+                // Добавляем новый факт
+                currentFacts.push(factData);
                 
-                // Clear form
-                elements.factText.value = '';
-                state.currentTags = [];
-                updateTagsDisplay();
+                // Сохраняем локально как резервную копию
+                localStorage.setItem("localFactsBackup", JSON.stringify(currentFacts));
                 
-                showStatus('Fact added successfully!', 'success');
-                
-                // Switch to browse tab to see the new fact
-                switchTab('browse');
-                
+                showStatus("Fact saved locally. To publish it, please manually add it to GitHub repository.", "warning");
+                input.value = "";
+                currentHashtags = [];
+                updateHashtagsPreview();
+                loadFacts();
             } catch (error) {
-                console.error('Failed to submit fact:', error);
-                showStatus('Failed to add fact. Please try again.', 'error');
+                showStatus("Error: " + error.message, "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("loading");
+                submitBtn.textContent = "Submit Fact";
             }
         }
-        
-        // GitHub API interactions
-        async function loadFileSha() {
+
+        // Delete fact (удаляет только локально)
+        async function deleteFact(index) {
+            if (!confirm("Are you sure you want to delete this fact? This will only remove it locally.")) return;
+            
+            try {
+                let currentFacts = [...allFacts];
+                currentFacts.splice(index, 1);
+                
+                localStorage.setItem("localFactsBackup", JSON.stringify(currentFacts));
+                showStatus("Fact deleted locally. To remove from GitHub, please edit the file manually.", "warning");
+                loadFacts();
+            } catch (error) {
+                showStatus("Error deleting fact: " + error.message, "error");
+            }
+        }
+
+        // Load and display facts
+        async function loadFacts() {
+            const factsList = document.getElementById("factsList");
+            factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
+            
             try {
                 const response = await fetch(
-                    `${config.apiUrl}/${config.githubUser}/${config.githubRepo}/contents/${config.factsFile}`,
-                    {
-                        headers: {
-                            'Authorization': `token ${config.githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    }
+                    `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?t=${Date.now()}`,
+                    { cache: 'no-store' }
                 );
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    state.fileSha = data.sha;
-                }
-            } catch (error) {
-                console.error('Failed to load file SHA:', error);
-            }
-        }
-        
-        async function loadFacts() {
-            try {
-                const response = await fetch(
-                    `https://raw.githubusercontent.com/${config.githubUser}/${config.githubRepo}/main/${config.factsFile}`
-                );
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                state.facts = Array.isArray(data) ? data : [];
-                
-            } catch (error) {
-                console.error('Failed to load facts:', error);
-                showStatus('Failed to load facts. Please try again.', 'error');
-            }
-        }
-        
-        async function updateFactsOnGitHub() {
-            try {
-                const content = JSON.stringify(state.facts, null, 2);
-                const encodedContent = btoa(unescape(encodeURIComponent(content)));
-                
-                const response = await fetch(
-                    `${config.apiUrl}/${config.githubUser}/${config.githubRepo}/contents/${config.factsFile}`,
-                    {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${config.githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: 'Update facts via web interface',
-                            content: encodedContent,
-                            sha: state.fileSha
-                        })
+                    allFacts = await response.json();
+                    if (!Array.isArray(allFacts)) allFacts = [];
+                    
+                    // Проверяем локальные факты
+                    const localFacts = localStorage.getItem("localFactsBackup");
+                    if (localFacts) {
+                        const localFactsArray = JSON.parse(localFacts);
+                        // Добавляем локальные факты, которых нет в основном списке
+                        localFactsArray.forEach(localFact => {
+                            if (!allFacts.some(fact => fact.text === localFact.text)) {
+                                allFacts.push(localFact);
+                            }
+                        });
                     }
-                );
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to update file');
+                    
+                    if (allFacts.length === 0) {
+                        factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
+                        return;
+                    }
+                    
+                    displayFacts(allFacts.slice().reverse().slice(0, 10), factsList);
+                } else {
+                    throw new Error('Failed to load facts');
                 }
-                
-                // Update SHA for next update
-                const responseData = await response.json();
-                state.fileSha = responseData.content.sha;
-                
             } catch (error) {
-                console.error('GitHub update failed:', error);
-                throw error;
-            }
-        }
-        
-        // Display functions
-        function displayAllFacts() {
-            displayFacts(state.facts);
-        }
-        
-        function searchFacts() {
-            const searchTerm = elements.searchInput.value.trim().toLowerCase();
-            if (!searchTerm) {
-                displayAllFacts();
-                return;
-            }
-            
-            const filteredFacts = state.facts.filter(fact => {
-                return fact.text.toLowerCase().includes(searchTerm) ||
-                       (fact.tags && fact.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
-            });
-            
-            displayFacts(filteredFacts);
-        }
-        
-        function displayFacts(factsToDisplay) {
-            elements.factsList.innerHTML = '';
-            
-            if (factsToDisplay.length === 0) {
-                elements.factsList.innerHTML = '<p>No facts found</p>';
-                return;
-            }
-            
-            factsToDisplay.forEach(fact => {
-                const factElement = document.createElement('div');
-                factElement.className = 'fact-item';
-                
-                let tagsHtml = '';
-                if (fact.tags && fact.tags.length > 0) {
-                    tagsHtml = `<div>${fact.tags.map(tag => 
-                        `<span class="tag">${tag}</span>`).join(' ')}</div>`;
+                console.error("Error loading facts:", error);
+                const localFacts = localStorage.getItem("localFactsBackup");
+                if (localFacts) {
+                    allFacts = JSON.parse(localFacts);
+                    displayFacts(allFacts.slice().reverse().slice(0, 10), factsList);
+                } else {
+                    factsList.innerHTML = '<div class="empty-state">Error loading facts</div>';
                 }
+            }
+        }
+
+        // Display facts
+        function displayFacts(facts, container, searchTerm = '') {
+            container.innerHTML = "";
+            
+            const factsToShow = container.id === "searchResults" ? facts : facts.slice(0, 10);
+            
+            factsToShow.forEach(fact => {
+                const originalIndex = allFacts.indexOf(fact);
+                const factElement = document.createElement("div");
+                factElement.className = "fact-item";
                 
-                const date = new Date(fact.timestamp);
-                const dateString = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                let text = fact.text;
+                if (searchTerm) {
+                    const regex = new RegExp(`(${searchTerm})`, "gi");
+                    text = text.replace(regex, '<span class="highlight">$1</span>');
+                }
                 
                 factElement.innerHTML = `
-                    <div class="fact-text">${fact.text}</div>
-                    ${tagsHtml}
-                    <div class="fact-meta">Added: ${dateString}</div>
-                    <div class="fact-actions">
-                        <button class="button" onclick="editFact('${fact.id}')">Edit</button>
-                        <button class="button button-danger" onclick="deleteFact('${fact.id}')">Delete</button>
+                    <div class="fact-content">
+                        ${text}
+                        ${fact.hashtags && fact.hashtags.length > 0 ? `
+                            <div class="fact-hashtags">
+                                ${fact.hashtags.map(tag => `
+                                    <span class="fact-hashtag">${tag}</span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
                     </div>
+                    <button class="button delete-btn" onclick="deleteFact(${originalIndex})">Delete</button>
                 `;
-                
-                elements.factsList.appendChild(factElement);
+                container.appendChild(factElement);
             });
         }
-        
-        // Helper functions
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+        // Search facts
+        function searchFacts() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            const resultsContainer = document.getElementById("searchResults");
+            
+            if (!searchTerm) {
+                resultsContainer.innerHTML = '<div class="empty-state">Enter search term</div>';
+                return;
+            }
+            
+            if (allFacts.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No facts available to search</div>';
+                return;
+            }
+
+            const filteredFacts = allFacts.filter(fact => {
+                if (fact.text.toLowerCase().includes(searchTerm)) return true;
+                if (fact.hashtags && fact.hashtags.some(tag => tag.toLowerCase().includes(searchTerm))) return true;
+                return false;
+            });
+
+            if (filteredFacts.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No matching facts found</div>';
+                return;
+            }
+
+            displayFacts(filteredFacts, resultsContainer, searchTerm);
         }
-        
+
+        // Show status message
         function showStatus(message, type) {
-            elements.statusMessage.textContent = message;
-            elements.statusMessage.className = `status-message ${type}`;
+            const statusMessage = document.getElementById("statusMessage");
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = "block";
             
             setTimeout(() => {
-                elements.statusMessage.className = 'status-message';
-                elements.statusMessage.textContent = '';
+                statusMessage.style.display = "none";
             }, 5000);
-        }
-        
-        // These would be implemented similarly to other functions
-        function editFact(factId) {
-            console.log('Edit fact:', factId);
-            // Implementation would go here
-        }
-        
-        function deleteFact(factId) {
-            if (confirm('Are you sure you want to delete this fact?')) {
-                console.log('Delete fact:', factId);
-                // Implementation would go here
-            }
         }
     </script>
 </body>
