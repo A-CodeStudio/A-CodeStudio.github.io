@@ -191,8 +191,8 @@
     
     <div class="container">
         <div class="input-container">
-            <input type="password" id="githubToken" class="token-input" placeholder="Enter your GitHub Personal Access Token (required for saving)">
-            <small style="display: block; margin-bottom: 15px; color: #aaa;">Get your token from GitHub Settings > Developer Settings > Personal Access Tokens (need repo permissions)</small>
+            <input type="password" id="githubToken" class="token-input" placeholder="Enter your GitHub Personal Access Token (required)">
+            <small style="display: block; margin-bottom: 15px; color: #aaa;">Get token from GitHub Settings > Developer Settings > Personal Access Tokens (need repo permissions)</small>
         
             <div class="tab-buttons">
                 <button class="button active" onclick="showTab('addTab')">Add Facts</button>
@@ -235,11 +235,10 @@
         
         let currentHashtags = [];
         let allFacts = [];
-        let fileSha = null; // Для хранения SHA файла для обновления
+        let fileSha = null;
         
         // Initialize on page load
         window.onload = function() {
-            // Load token from localStorage if exists
             const savedToken = localStorage.getItem('githubToken');
             if (savedToken) {
                 document.getElementById('githubToken').value = savedToken;
@@ -248,7 +247,6 @@
             loadFacts();
             document.getElementById("inputValue").focus();
             
-            // Enter key handlers
             document.getElementById("inputValue").addEventListener("keypress", function(e) {
                 if (e.key === "Enter") addFact();
             });
@@ -261,7 +259,6 @@
                 if (e.key === "Enter") searchFacts();
             });
             
-            // Save token when changed
             document.getElementById('githubToken').addEventListener('change', function() {
                 localStorage.setItem('githubToken', this.value);
             });
@@ -356,13 +353,16 @@
                 // 1. Get current facts and file SHA
                 const { currentFacts, sha } = await getCurrentFactsAndSha(githubToken);
                 
-                // 2. Add new fact
-                currentFacts.push(factData);
+                // 2. Add new fact to beginning of array
+                currentFacts.unshift(factData);
                 
                 // 3. Update file on GitHub
                 await updateFileOnGitHub(currentFacts, sha, githubToken);
                 
-                showStatus("Fact successfully added to GitHub!", "success");
+                // 4. Purge cache for immediate update
+                await purgeGitHubCache();
+                
+                showStatus("Fact successfully published!", "success");
                 input.value = "";
                 currentHashtags = [];
                 updateHashtagsPreview();
@@ -442,6 +442,16 @@
             }
         }
 
+        // Purge GitHub cache
+        async function purgeGitHubCache() {
+            try {
+                await fetch(`https://purge.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${FACTS_FILE}`);
+                console.log("GitHub cache purged");
+            } catch (e) {
+                console.log("Cache purge failed", e);
+            }
+        }
+
         // Delete fact from GitHub
         async function deleteFact(index) {
             if (!confirm("Are you sure you want to delete this fact?")) return;
@@ -461,6 +471,9 @@
                 
                 // 3. Update file on GitHub
                 await updateFileOnGitHub(currentFacts, sha, githubToken);
+                
+                // 4. Purge cache
+                await purgeGitHubCache();
                 
                 showStatus("Fact deleted successfully!", "success");
                 loadFacts();
@@ -507,11 +520,6 @@
             container.innerHTML = "";
             
             const factsToShow = container.id === "searchResults" ? facts : facts.slice(0, 10);
-            
-            if (factsToShow.length === 0) {
-                container.innerHTML = '<div class="empty-state">No facts found</div>';
-                return;
-            }
             
             factsToShow.forEach((fact, index) => {
                 const factElement = document.createElement("div");
@@ -563,6 +571,11 @@
                 if (fact.hashtags && fact.hashtags.some(tag => tag.toLowerCase().includes(searchTerm))) return true;
                 return false;
             });
+
+            if (filteredFacts.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No matching facts found</div>';
+                return;
+            }
 
             displayFacts(filteredFacts, resultsContainer, searchTerm);
         }
