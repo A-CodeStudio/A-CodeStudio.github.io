@@ -175,40 +175,6 @@
             background-color: #002c85;
             color: #00c8ff;
         }
-        .hashtag.active {
-            background-color: gold;
-            color: #002c85;
-        }
-        .hashtag.excluded {
-            background-color: #ff4d4d;
-            color: white;
-            text-decoration: line-through;
-        }
-        .filter-status {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #aaa;
-        }
-        .reset-filters {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #00c8ff;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        .hashtag-hint {
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 5px;
-            text-align: center;
-        }
-        .hashtag-hint kbd {
-            background-color: #333;
-            color: #fff;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-family: monospace;
-        }
         .fact-date {
             font-size: 12px;
             color: #aaa;
@@ -235,14 +201,10 @@
             <div class="fact-text" id="factText">Loading facts...</div>
         </div>
         
-        <div class="view-status" id="viewStatus"></div>
-        <div class="filter-status" id="filterStatus"></div>
-        <div class="reset-filters" id="resetFilters" style="display: none;" onclick="resetFilters()">Reset filters</div>
-        
         <div class="navigation">
-            <button class="button" id="prevBtn" onclick="PF()" disabled>Previous</button>
-            <button class="button" onclick="randomFact()">Random</button>
-            <button class="button" id="nextBtn" onclick="NF()" disabled>Next</button>
+            <button class="button" id="prevBtn" disabled>Previous</button>
+            <button class="button" id="randomBtn">Random</button>
+            <button class="button" id="nextBtn" disabled>Next</button>
         </div>
     </div>
 
@@ -254,70 +216,26 @@
         const GITHUB_USER = 'A-CodeStudio';
         const GITHUB_REPO = 'Fact';
         const FACTS_FILE = 'facts.json';
-        const UPDATE_INTERVAL = 10000; // Update every 10 seconds
+        const UPDATE_INTERVAL = 15000; // 15 seconds
         
         // App state
         let facts = [];
-        let starredFacts = JSON.parse(localStorage.getItem("starredFacts")) || [];
-        let viewedFacts = JSON.parse(localStorage.getItem("viewedFacts")) || [];
         let currentIndex = 0;
-        let activeFilters = [];
-        let excludedHashtags = [];
         let updateTimer = null;
-        
-        // Visitor stats
-        let visitorStats = JSON.parse(localStorage.getItem("visitorStats")) || {
-            count: 0,
-            clicks: 0,
-            lastVisit: null
-        };
+        let viewedFacts = JSON.parse(localStorage.getItem("viewedFacts")) || [];
 
         // Initialize on page load
         window.onload = async function() {
-            updateVisitorStats();
             await loadFactsFromGitHub();
             updateFactDisplay();
-            updateProgress();
-            updateNavButtons();
             startAutoUpdate();
-            
-            document.getElementById('authorLink').addEventListener('click', function() {
-                if (!sessionStorage.getItem('clicked')) {
-                    visitorStats.clicks++;
-                    localStorage.setItem("visitorStats", JSON.stringify(visitorStats));
-                    sessionStorage.setItem('clicked', 'true');
-                    updateVisitorStats();
-                }
-            });
+            setupEventListeners();
         };
 
-        // Start auto-update timer
-        function startAutoUpdate() {
-            if (updateTimer) clearInterval(updateTimer);
-            updateTimer = setInterval(async () => {
-                console.log("Auto-updating facts...");
-                await loadFactsFromGitHub();
-                updateFactDisplay();
-            }, UPDATE_INTERVAL);
-        }
-
-        // Update visitor stats
-        function updateVisitorStats() {
-            if (!sessionStorage.getItem('visited')) {
-                visitorStats.count++;
-                sessionStorage.setItem('visited', 'true');
-                localStorage.setItem("visitorStats", JSON.stringify(visitorStats));
-            }
-            
-            document.getElementById("visitorCount").textContent = visitorStats.count;
-            document.getElementById("ctrPercentage").textContent = 
-                visitorStats.count > 0 ? Math.round((visitorStats.clicks / visitorStats.count) * 100) + '%' : '0%';
-        }
-
-        // Load facts from GitHub with cache busting
+        // Load facts from GitHub
         async function loadFactsFromGitHub() {
             const statusElement = document.getElementById('serverStatus');
-            statusElement.textContent = 'Updating...';
+            statusElement.textContent = 'Connecting...';
             
             try {
                 const response = await fetch(
@@ -330,26 +248,34 @@
                     }
                 );
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
-                const newFacts = Array.isArray(data) ? data : [];
+                if (!Array.isArray(data)) throw new Error("Invalid data format");
                 
-                // Only update if facts have changed
-                if (JSON.stringify(newFacts) !== JSON.stringify(facts)) {
-                    facts = newFacts;
+                // Check if facts changed
+                if (JSON.stringify(data) !== JSON.stringify(facts)) {
+                    facts = data;
                     facts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    localStorage.setItem('factsBackup', JSON.stringify(facts));
                     statusElement.textContent = 'Updated: ' + new Date().toLocaleTimeString();
                 } else {
-                    statusElement.textContent = 'Connected to GitHub';
+                    statusElement.textContent = 'No changes';
                 }
                 
                 return true;
             } catch (error) {
                 console.error("GitHub error:", error);
-                statusElement.textContent = 'Connection error';
+                
+                // Try local backup
+                const backup = localStorage.getItem('factsBackup');
+                if (backup) {
+                    facts = JSON.parse(backup);
+                    statusElement.textContent = 'Using local backup';
+                    return true;
+                }
+                
+                statusElement.textContent = 'Connection failed';
                 return false;
             }
         }
@@ -357,230 +283,91 @@
         // Update fact display
         function updateFactDisplay() {
             const factDisplay = document.getElementById("factDisplay");
-            const factText = document.getElementById("factText");
             const counter = document.getElementById("counter");
-            const viewStatus = document.getElementById("viewStatus");
-            const newIndicator = document.getElementById("newIndicator");
-            const filterStatus = document.getElementById("filterStatus");
-            const resetFilters = document.getElementById("resetFilters");
             
             if (facts.length === 0) {
-                factText.textContent = "No facts available. Add some facts first!";
-                factText.className = "fact-text no-facts";
+                factDisplay.innerHTML = '<div class="fact-text no-facts">No facts available</div>';
                 counter.textContent = "Fact 0/0";
-                viewStatus.textContent = "";
-                newIndicator.style.display = "none";
                 return;
             }
 
-            const filteredFacts = getFilteredFacts();
-            if (filteredFacts.length === 0) {
-                factDisplay.innerHTML = '<div class="fact-text no-facts">No facts match current filters</div>';
-                resetFilters.style.display = "block";
-                filterStatus.textContent = getFilterStatusText();
-                return;
-            }
+            const fact = facts[currentIndex];
+            const isNew = !viewedFacts.includes(currentIndex);
             
-            if (currentIndex >= filteredFacts.length) {
-                currentIndex = 0;
-            }
-            
-            const fact = filteredFacts[currentIndex];
-            const originalIndex = facts.indexOf(fact);
-            const isStarred = starredFacts.includes(originalIndex);
-            const isNew = !viewedFacts.includes(originalIndex);
-            
-            resetFilters.style.display = (activeFilters.length > 0 || excludedHashtags.length > 0) ? "block" : "none";
-            filterStatus.textContent = getFilterStatusText();
-            
-            const factDate = fact.timestamp ? new Date(fact.timestamp).toLocaleString() : 'Unknown date';
-            
-            let factHTML = '';
-            if (isStarred) {
-                factHTML = `
-                    <div class="special-fact">
-                        <div class="special-label">FEATURED</div>
-                        <div class="fact-text">${fact.text}</div>
-                `;
-            } else {
-                factHTML = `
-                    <div>
-                        <div class="fact-text">${fact.text}</div>
-                `;
-            }
+            let factHTML = `
+                <div class="${isNew ? 'special-fact' : ''}">
+                    ${isNew ? '<div class="special-label">NEW</div>' : ''}
+                    <div class="fact-text">${fact.text}</div>
+            `;
             
             if (fact.hashtags && fact.hashtags.length > 0) {
                 factHTML += `
                     <div class="fact-hashtags">
-                        ${fact.hashtags.map(tag => `
-                            <span class="hashtag ${activeFilters.includes(tag) ? 'active' : ''} 
-                                ${excludedHashtags.includes(tag) ? 'excluded' : ''}" 
-                                onclick="toggleHashtagFilter('${tag}')">
-                                ${tag}
-                            </span>
-                        `).join('')}
-                    </div>
-                    <div class="hashtag-hint">
-                        Click: filter by tag | <kbd>Ctrl</kbd>+Click: exclude tag
+                        ${fact.hashtags.map(tag => `<span class="hashtag">${tag}</span>`).join('')}
                     </div>
                 `;
             }
             
             factHTML += `
-                <div class="fact-date">Added: ${factDate}</div>
+                <div class="fact-date">
+                    Added: ${fact.timestamp ? new Date(fact.timestamp).toLocaleString() : 'Unknown date'}
+                </div>
                 </div>
             `;
             
             factDisplay.innerHTML = factHTML;
-            counter.textContent = `Fact ${currentIndex + 1}/${filteredFacts.length}`;
+            counter.textContent = `Fact ${currentIndex + 1}/${facts.length}`;
             
-            newIndicator.style.display = isNew ? "block" : "none";
-            viewStatus.textContent = isNew ? "You haven't seen this fact before" : "You've viewed this fact before";
-            
+            // Mark as viewed
             if (isNew) {
-                viewedFacts.push(originalIndex);
+                viewedFacts.push(currentIndex);
                 localStorage.setItem("viewedFacts", JSON.stringify(viewedFacts));
-                updateProgress();
             }
+            
+            // Update navigation buttons
+            document.getElementById("prevBtn").disabled = facts.length <= 1;
+            document.getElementById("nextBtn").disabled = facts.length <= 1;
         }
 
-        // Get filtered facts
-        function getFilteredFacts() {
-            if (activeFilters.length === 0 && excludedHashtags.length === 0) {
-                return facts;
-            }
+        // Navigation functions
+        function nextFact() {
+            currentIndex = (currentIndex + 1) % facts.length;
+            updateFactDisplay();
+        }
+
+        function prevFact() {
+            currentIndex = (currentIndex - 1 + facts.length) % facts.length;
+            updateFactDisplay();
+        }
+
+        function randomFact() {
+            const newIndex = Math.floor(Math.random() * facts.length);
+            currentIndex = newIndex !== currentIndex || facts.length <= 1 ? newIndex : 
+                          (newIndex + 1) % facts.length;
+            updateFactDisplay();
+        }
+
+        // Auto-update
+        function startAutoUpdate() {
+            if (updateTimer) clearInterval(updateTimer);
+            updateTimer = setInterval(async () => {
+                await loadFactsFromGitHub();
+                updateFactDisplay();
+            }, UPDATE_INTERVAL);
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            document.getElementById("nextBtn").addEventListener("click", nextFact);
+            document.getElementById("prevBtn").addEventListener("click", prevFact);
+            document.getElementById("randomBtn").addEventListener("click", randomFact);
             
-            return facts.filter(fact => {
-                if (activeFilters.length > 0) {
-                    const hasActiveTags = fact.hashtags && 
-                        activeFilters.some(tag => fact.hashtags.includes(tag));
-                    if (!hasActiveTags) return false;
-                }
-                
-                if (excludedHashtags.length > 0 && fact.hashtags) {
-                    const hasExcludedTags = fact.hashtags.some(tag => 
-                        excludedHashtags.includes(tag));
-                    if (hasExcludedTags) return false;
-                }
-                
-                return true;
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "ArrowRight") nextFact();
+                if (e.key === "ArrowLeft") prevFact();
+                if (e.key === " ") randomFact();
             });
         }
-
-        // Filter status text
-        function getFilterStatusText() {
-            if (activeFilters.length === 0 && excludedHashtags.length === 0) return "";
-            
-            let text = "Filters: ";
-            if (activeFilters.length > 0) {
-                text += `Showing ${activeFilters.join(', ')}`;
-            }
-            if (excludedHashtags.length > 0) {
-                if (activeFilters.length > 0) text += " and ";
-                text += `Excluding ${excludedHashtags.join(', ')}`;
-            }
-            return text;
-        }
-
-        // Toggle hashtag filter
-        function toggleHashtagFilter(hashtag) {
-            const event = window.event;
-            
-            if (event.ctrlKey || event.metaKey) {
-                const index = excludedHashtags.indexOf(hashtag);
-                if (index === -1) {
-                    excludedHashtags.push(hashtag);
-                    const activeIndex = activeFilters.indexOf(hashtag);
-                    if (activeIndex !== -1) {
-                        activeFilters.splice(activeIndex, 1);
-                    }
-                } else {
-                    excludedHashtags.splice(index, 1);
-                }
-            } else {
-                const index = activeFilters.indexOf(hashtag);
-                if (index === -1) {
-                    activeFilters.push(hashtag);
-                    const excludedIndex = excludedHashtags.indexOf(hashtag);
-                    if (excludedIndex !== -1) {
-                        excludedHashtags.splice(excludedIndex, 1);
-                    }
-                } else {
-                    activeFilters.splice(index, 1);
-                }
-            }
-            
-            currentIndex = 0;
-            updateFactDisplay();
-        }
-
-        // Reset all filters
-        function resetFilters() {
-            activeFilters = [];
-            excludedHashtags = [];
-            currentIndex = 0;
-            updateFactDisplay();
-        }
-
-        // Update progress
-        function updateProgress() {
-            const progressIndicator = document.getElementById("progressIndicator");
-            const total = facts.length;
-            const viewed = viewedFacts.length;
-            const percentage = total > 0 ? Math.round((viewed / total) * 100) : 0;
-            
-            progressIndicator.textContent = `${percentage}%`;
-            progressIndicator.style.backgroundColor = percentage === 100 ? 
-                "#4CAF50" : percentage > 70 ? 
-                "#8BC34A" : percentage > 40 ? 
-                "#FFC107" : "#F44336";
-        }
-
-        // Update navigation buttons
-        function updateNavButtons() {
-            const filteredFacts = getFilteredFacts();
-            document.getElementById("prevBtn").disabled = filteredFacts.length <= 1;
-            document.getElementById("nextBtn").disabled = filteredFacts.length <= 1;
-        }
-
-        // Next fact
-        function NF() {
-            const filteredFacts = getFilteredFacts();
-            if (filteredFacts.length === 0) return;
-            
-            currentIndex = (currentIndex + 1) % filteredFacts.length;
-            updateFactDisplay();
-        }
-
-        // Previous fact
-        function PF() {
-            const filteredFacts = getFilteredFacts();
-            if (filteredFacts.length === 0) return;
-            
-            currentIndex = (currentIndex - 1 + filteredFacts.length) % filteredFacts.length;
-            updateFactDisplay();
-        }
-
-        // Random fact
-        function randomFact() {
-            const filteredFacts = getFilteredFacts();
-            if (filteredFacts.length === 0) return;
-            
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * filteredFacts.length);
-            } while (newIndex === currentIndex && filteredFacts.length > 1);
-            
-            currentIndex = newIndex;
-            updateFactDisplay();
-        }
-
-        // Keyboard navigation
-        document.addEventListener("keydown", function(e) {
-            if (e.key === "ArrowRight") NF();
-            if (e.key === "ArrowLeft") PF();
-            if (e.key === " ") randomFact();
-        });
     </script>
 </body>
 </html>
