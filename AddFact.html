@@ -191,7 +191,7 @@
     
     <div class="container">
         <div class="input-container">
-            <input type="password" id="githubToken" class="token-input"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">
+            <input type="password" id="githubToken" class="token-input" placeholder="Enter GitHub token">
             <small style="display: block; margin-bottom: 15px; color: #aaa;">Get token from GitHub Settings > Developer Settings > Personal Access Tokens (need repo permissions)</small>
         
             <div class="tab-buttons">
@@ -483,20 +483,28 @@
             }
         }
 
-        // Load and display facts
+        // Load and display facts with improved error handling
         async function loadFacts() {
             const factsList = document.getElementById("factsList");
             factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
             
             try {
+                // Try with cache busting
                 const response = await fetch(
                     `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?t=${Date.now()}`,
-                    { cache: 'no-store' }
+                    { 
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache'
+                        }
+                    }
                 );
                 
                 if (response.ok) {
                     allFacts = await response.json();
-                    if (!Array.isArray(allFacts)) allFacts = [];
+                    if (!Array.isArray(allFacts)) {
+                        throw new Error("Invalid data format");
+                    }
                     
                     if (allFacts.length === 0) {
                         factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
@@ -506,12 +514,31 @@
                     // Sort by timestamp (newest first)
                     allFacts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     displayFacts(allFacts.slice(0, 10), factsList);
+                    
+                    // Save to localStorage as backup
+                    localStorage.setItem('factsBackup', JSON.stringify(allFacts));
                 } else {
-                    throw new Error('Failed to load facts');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
             } catch (error) {
                 console.error("Error loading facts:", error);
-                factsList.innerHTML = '<div class="empty-state">Error loading facts</div>';
+                
+                // Try to use local backup
+                try {
+                    const backup = localStorage.getItem('factsBackup');
+                    if (backup) {
+                        allFacts = JSON.parse(backup);
+                        if (Array.isArray(allFacts)) {
+                            displayFacts(allFacts.slice(0, 10), factsList);
+                            showStatus("Using cached facts. Online update failed: " + error.message, "warning");
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing backup:", e);
+                }
+                
+                factsList.innerHTML = '<div class="empty-state">Error loading facts: ' + error.message + '</div>';
             }
         }
 
