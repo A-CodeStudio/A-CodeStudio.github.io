@@ -38,11 +38,13 @@
             gap: 10px;
             margin-bottom: 15px;
         }
-        input[type="text"], input[type="search"] {
+        input[type="text"], input[type="search"], input[type="password"] {
             padding: 12px;
             border-radius: 5px;
             border: none;
             font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .hashtag-input {
             display: flex;
@@ -228,16 +230,15 @@
     </div>
 
     <script>
-        // GitHub configuration
         const GITHUB_USER = 'A-CodeStudio';
         const GITHUB_REPO = 'Fact';
         const FACTS_FILE = 'facts.json';
+        const CACHE_BUSTER = `v=${Date.now()}`;
         
         let currentHashtags = [];
         let allFacts = [];
         let fileSha = null;
-        
-        // Initialize on page load
+
         window.onload = function() {
             const savedToken = localStorage.getItem('githubToken');
             if (savedToken) {
@@ -264,7 +265,6 @@
             });
         };
 
-        // Show/hide tabs
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.add('hidden');
@@ -277,7 +277,6 @@
             event.target.classList.add('active');
         }
 
-        // Add hashtag to current fact
         function addHashtag() {
             const input = document.getElementById("hashtagInput");
             let hashtag = input.value.trim();
@@ -299,7 +298,6 @@
             }
         }
 
-        // Update hashtags preview
         function updateHashtagsPreview() {
             const container = document.getElementById("hashtagsPreview");
             container.innerHTML = '';
@@ -315,13 +313,11 @@
             });
         }
 
-        // Remove hashtag
         function removeHashtag(index) {
             currentHashtags.splice(index, 1);
             updateHashtagsPreview();
         }
 
-        // Add fact to GitHub
         async function addFact() {
             const input = document.getElementById("inputValue");
             const factText = input.value.trim();
@@ -350,16 +346,9 @@
             submitBtn.textContent = "Submitting...";
             
             try {
-                // 1. Get current facts and file SHA
                 const { currentFacts, sha } = await getCurrentFactsAndSha(githubToken);
-                
-                // 2. Add new fact to beginning of array
                 currentFacts.unshift(factData);
-                
-                // 3. Update file on GitHub
                 await updateFileOnGitHub(currentFacts, sha, githubToken);
-                
-                // 4. Purge cache for immediate update
                 await purgeGitHubCache();
                 
                 showStatus("Fact successfully published!", "success");
@@ -377,7 +366,6 @@
             }
         }
 
-        // Get current facts and file SHA
         async function getCurrentFactsAndSha(token) {
             try {
                 const response = await fetch(
@@ -408,7 +396,6 @@
             }
         }
 
-        // Update file on GitHub
         async function updateFileOnGitHub(updatedFacts, sha, token) {
             try {
                 const content = JSON.stringify(updatedFacts, null, 2);
@@ -442,7 +429,6 @@
             }
         }
 
-        // Purge GitHub cache
         async function purgeGitHubCache() {
             try {
                 await fetch(`https://purge.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${FACTS_FILE}`);
@@ -452,7 +438,6 @@
             }
         }
 
-        // Delete fact from GitHub
         async function deleteFact(index) {
             if (!confirm("Are you sure you want to delete this fact?")) return;
             
@@ -463,16 +448,9 @@
             }
             
             try {
-                // 1. Get current facts and file SHA
                 const { currentFacts, sha } = await getCurrentFactsAndSha(githubToken);
-                
-                // 2. Remove the fact
                 currentFacts.splice(index, 1);
-                
-                // 3. Update file on GitHub
                 await updateFileOnGitHub(currentFacts, sha, githubToken);
-                
-                // 4. Purge cache
                 await purgeGitHubCache();
                 
                 showStatus("Fact deleted successfully!", "success");
@@ -483,66 +461,64 @@
             }
         }
 
-        // Load and display facts with improved error handling
         async function loadFacts() {
             const factsList = document.getElementById("factsList");
             factsList.innerHTML = '<div class="empty-state">Loading facts...</div>';
             
             try {
-                // Try with cache busting
-                const response = await fetch(
-                    `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?t=${Date.now()}`,
-                    { 
-                        cache: 'no-store',
-                        headers: {
-                            'Cache-Control': 'no-cache'
-                        }
-                    }
-                );
+                const urls = [
+                    `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?${CACHE_BUSTER}`,
+                    `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}/${FACTS_FILE}?${CACHE_BUSTER}`,
+                    `https://gitcdn.link/repo/${GITHUB_USER}/${GITHUB_REPO}/main/${FACTS_FILE}?${CACHE_BUSTER}`
+                ];
+
+                let success = false;
                 
-                if (response.ok) {
-                    allFacts = await response.json();
-                    if (!Array.isArray(allFacts)) {
-                        throw new Error("Invalid data format");
+                for (const url of urls) {
+                    try {
+                        const response = await fetch(url, {
+                            cache: 'no-store',
+                            headers: {
+                                'Cache-Control': 'no-cache'
+                            }
+                        });
+                        
+                        if (!response.ok) continue;
+                        
+                        allFacts = await response.json();
+                        if (!Array.isArray(allFacts)) continue;
+                        
+                        allFacts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        localStorage.setItem('factsBackup', JSON.stringify(allFacts));
+                        displayFacts(allFacts.slice(0, 10), factsList);
+                        success = true;
+                        break;
+                    } catch (error) {
+                        continue;
                     }
-                    
-                    if (allFacts.length === 0) {
-                        factsList.innerHTML = '<div class="empty-state">No facts added yet</div>';
-                        return;
-                    }
-                    
-                    // Sort by timestamp (newest first)
-                    allFacts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    displayFacts(allFacts.slice(0, 10), factsList);
-                    
-                    // Save to localStorage as backup
-                    localStorage.setItem('factsBackup', JSON.stringify(allFacts));
-                } else {
-                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                if (!success) throw new Error("All sources failed");
+
             } catch (error) {
                 console.error("Error loading facts:", error);
                 
-                // Try to use local backup
                 try {
                     const backup = localStorage.getItem('factsBackup');
                     if (backup) {
                         allFacts = JSON.parse(backup);
-                        if (Array.isArray(allFacts)) {
-                            displayFacts(allFacts.slice(0, 10), factsList);
-                            showStatus("Using cached facts. Online update failed: " + error.message, "warning");
-                            return;
-                        }
+                        displayFacts(allFacts.slice(0, 10), factsList);
+                        showStatus("Using cached facts. Online update failed", "warning");
+                        return;
                     }
                 } catch (e) {
-                    console.error("Error parsing backup:", e);
+                    console.error("Backup parse error:", e);
                 }
                 
-                factsList.innerHTML = '<div class="empty-state">Error loading facts: ' + error.message + '</div>';
+                factsList.innerHTML = '<div class="empty-state">Failed to load facts</div>';
             }
         }
 
-        // Display facts
         function displayFacts(facts, container, searchTerm = '') {
             container.innerHTML = "";
             
@@ -578,7 +554,6 @@
             });
         }
 
-        // Search facts
         function searchFacts() {
             const searchTerm = document.getElementById("searchInput").value.toLowerCase();
             const resultsContainer = document.getElementById("searchResults");
@@ -607,7 +582,6 @@
             displayFacts(filteredFacts, resultsContainer, searchTerm);
         }
 
-        // Show status message
         function showStatus(message, type) {
             const statusMessage = document.getElementById("statusMessage");
             statusMessage.textContent = message;
